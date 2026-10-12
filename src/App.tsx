@@ -1,0 +1,231 @@
+import React, { useState, useEffect } from 'react';
+import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
+import { DashboardView } from './components/DashboardView';
+import { ContextExplorer } from './components/ContextExplorer';
+import { PaperStudio } from './components/PaperStudio';
+import { AiLikelihoodPanel } from './components/AiLikelihoodPanel';
+import { PaperComparisonView } from './components/PaperComparisonView';
+import { ResearchGapFinder } from './components/ResearchGapFinder';
+import { AcademicDiscovery } from './components/AcademicDiscovery';
+import { WritingImprover } from './components/WritingImprover';
+import { N8nAutomationCenter } from './components/N8nAutomationCenter';
+import { ExportModal } from './components/ExportModal';
+import { NotificationDrawer } from './components/NotificationDrawer';
+import { api } from './api';
+import {
+  User,
+  ResearchPaper,
+  ResearchContextSession,
+  ResearchGap,
+  AutomationExecutionLog,
+  NotificationItem,
+} from './types';
+
+export default function App() {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
+
+  // Core Data State
+  const [user, setUser] = useState<User | null>(null);
+  const [papers, setPapers] = useState<ResearchPaper[]>([]);
+  const [sessions, setSessions] = useState<ResearchContextSession[]>([]);
+  const [gaps, setGaps] = useState<ResearchGap[]>([]);
+  const [logs, setLogs] = useState<AutomationExecutionLog[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [analytics, setAnalytics] = useState<any>(null);
+
+  // Active Selections
+  const [activePaperForDetector, setActivePaperForDetector] = useState<ResearchPaper | null>(null);
+  const [writingStudioInitialText, setWritingStudioInitialText] = useState('');
+  const [exportTarget, setExportTarget] = useState<{ type: 'paper' | 'session'; id: string } | null>(null);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+
+  // Initial load
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  const loadAllData = async () => {
+    try {
+      const [uRes, pRes, sRes, gRes, lRes, nRes, aRes] = await Promise.all([
+        api.getCurrentUser(),
+        api.getPapers(),
+        api.getContextSessions(),
+        api.getGaps(),
+        api.getAutomationLogs(),
+        api.getNotifications(),
+        api.getAnalytics(),
+      ]);
+
+      setUser(uRes.user);
+      setPapers(pRes.papers);
+      if (pRes.papers.length > 0 && !activePaperForDetector) {
+        setActivePaperForDetector(pRes.papers[0]);
+      }
+      setSessions(sRes.sessions);
+      setGaps(gRes.gaps);
+      setLogs(lRes.logs);
+      setNotifications(nRes.notifications);
+      setUnreadCount(nRes.unreadCount);
+      setAnalytics(aRes);
+    } catch (err) {
+      console.error('Error initializing application state:', err);
+    }
+  };
+
+  const handleRefreshPapers = async () => {
+    try {
+      const res = await api.getPapers();
+      setPapers(res.papers);
+      if (res.papers.length > 0 && !activePaperForDetector) {
+        setActivePaperForDetector(res.papers[0]);
+      }
+    } catch (e) {
+      console.error('Error refreshing papers:', e);
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications(notifications.map(n => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount(Math.max(0, unreadCount - 1));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleOpenAiLikelihood = (paper: ResearchPaper) => {
+    setActivePaperForDetector(paper);
+    setCurrentView('detector');
+  };
+
+  const handleOpenWritingStudioWithText = (text?: string) => {
+    if (text) setWritingStudioInitialText(text);
+    setCurrentView('writing');
+  };
+
+  const handleExport = (type: 'paper' | 'session', id: string) => {
+    setExportTarget({ type, id });
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
+      {/* Left Sidebar */}
+      <Sidebar
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
+        paperCount={papers.length}
+        gapCount={gaps.length}
+      />
+
+      {/* Main Container */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Top Navigation Bar */}
+        <Navbar
+          user={user}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onOpenNotifications={() => setNotificationDrawerOpen(true)}
+          onNavigate={setCurrentView}
+          globalSearch={globalSearch}
+          setGlobalSearch={setGlobalSearch}
+        />
+
+        {/* Scrollable View Content */}
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+          {currentView === 'dashboard' && (
+            <DashboardView
+              analytics={analytics}
+              papers={papers}
+              sessions={sessions}
+              gaps={gaps}
+              logs={logs}
+              onNavigate={setCurrentView}
+              onSelectPaper={(p) => {
+                setActivePaperForDetector(p);
+                setCurrentView('papers');
+              }}
+            />
+          )}
+
+          {currentView === 'context' && (
+            <ContextExplorer
+              onExport={handleExport}
+              onNavigateToGaps={() => setCurrentView('gaps')}
+            />
+          )}
+
+          {currentView === 'papers' && (
+            <PaperStudio
+              papers={papers}
+              onRefreshPapers={handleRefreshPapers}
+              onOpenAiLikelihood={handleOpenAiLikelihood}
+              onOpenWritingImprover={handleOpenWritingStudioWithText}
+              onExport={handleExport}
+            />
+          )}
+
+          {currentView === 'detector' && (
+            <AiLikelihoodPanel
+              paper={activePaperForDetector || papers[0] || null}
+              onSendToWritingStudio={handleOpenWritingStudioWithText}
+              onRefreshPaper={handleRefreshPapers}
+            />
+          )}
+
+          {currentView === 'compare' && (
+            <PaperComparisonView papers={papers} />
+          )}
+
+          {currentView === 'gaps' && (
+            <ResearchGapFinder />
+          )}
+
+          {currentView === 'discovery' && (
+            <AcademicDiscovery />
+          )}
+
+          {currentView === 'writing' && (
+            <WritingImprover initialText={writingStudioInitialText} />
+          )}
+
+          {currentView === 'automation' && (
+            <N8nAutomationCenter />
+          )}
+        </main>
+      </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        exportTarget={exportTarget}
+        onClose={() => setExportTarget(null)}
+      />
+
+      {/* Notifications Drawer */}
+      <NotificationDrawer
+        isOpen={notificationDrawerOpen}
+        onClose={() => setNotificationDrawerOpen(false)}
+        notifications={notifications}
+        onMarkRead={handleMarkNotificationRead}
+        onMarkAllRead={handleMarkAllNotificationsRead}
+        onNavigate={setCurrentView}
+      />
+    </div>
+  );
+}

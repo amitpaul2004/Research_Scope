@@ -1,0 +1,6 @@
+{
+  "name": "ResearchLens",
+  "description": "AI-Powered Research Intelligence Platform with deep context exploration, paper analysis, multi-paper comparison, research gap finder, and n8n automation layer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

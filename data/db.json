@@ -1,0 +1,20 @@
+{
+  "users": [
+    {
+      "id": "usr_default",
+      "name": "Researcher",
+      "email": "pal900290@gmail.com",
+      "role": "researcher",
+      "institution": "Research Institute",
+      "createdAt": "2026-10-12T09:44:00.000Z"
+    }
+  ],
+  "papers": [],
+  "contextSessions": [],
+  "gaps": [],
+  "comparisons": [],
+  "executionLogs": [],
+  "notifications": [],
+  "subscriptions": [],
+  "revisions": []
+}
