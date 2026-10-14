@@ -4,13 +4,12 @@ import {
   Sparkles,
   Check,
   Copy,
-  RotateCcw,
-  CheckCircle2,
   Clock,
-  ArrowRight,
-  Sliders,
+  CheckCircle2,
   AlertCircle,
   FileCheck,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { api } from '../api';
 import { WritingRevision } from '../types';
@@ -21,9 +20,7 @@ interface WritingImproverProps {
 
 export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = '' }) => {
   const [inputText, setInputText] = useState(initialText);
-  const [selectedMode, setSelectedMode] = useState<
-    'Formal Academic' | 'Natural Academic' | 'Concise Academic' | 'Technical' | 'Simplified Explanation' | 'Clarity & Grammar' | 'Manual Editing'
-  >('Formal Academic');
+  const [selectedMode, setSelectedMode] = useState<string>('Formal Academic');
   const [customInstructions, setCustomInstructions] = useState('');
   const [revisedText, setRevisedText] = useState('');
   const [explanation, setExplanation] = useState('');
@@ -32,6 +29,8 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
   const [copied, setCopied] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [revisions, setRevisions] = useState<WritingRevision[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
 
   useEffect(() => {
     if (initialText) {
@@ -43,54 +42,96 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
   const loadRevisions = async () => {
     try {
       const res = await api.getRevisions();
-      setRevisions(res.revisions);
+      // Filter out any invalid historical revisions where originalText === revisedText
+      const validRevisions = (res.revisions || []).filter(
+        (r) => r.originalText?.trim() !== r.revisedText?.trim()
+      );
+      setRevisions(validRevisions);
     } catch (e) {
       console.error('Failed to load revisions:', e);
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    setError(null);
+    if (revisedText) {
+      setIsStale(true);
+    }
+  };
+
+  const handleModeChange = (modeId: string) => {
+    setSelectedMode(modeId);
+    setError(null);
+    if (revisedText) {
+      setIsStale(true);
+    }
+  };
+
   const handleEnhance = async () => {
-    if (!inputText.trim()) return;
+    const trimmed = inputText.trim();
+    if (!trimmed || trimmed.length < 10) {
+      setError('Please provide at least 10 characters of academic text to enhance.');
+      return;
+    }
+
+    if (loading) return; // Prevent duplicate requests
 
     setLoading(true);
+    setError(null);
     setAccepted(false);
+
     try {
       const res = await api.improveWriting({
-        text: inputText,
+        text: trimmed,
         mode: selectedMode,
-        customInstructions: customInstructions.trim() || undefined,
+        customInstructions:
+          selectedMode === 'Custom Prompt' && customInstructions.trim()
+            ? customInstructions.trim()
+            : undefined,
       });
+
+      if (!res?.revision?.revisedText) {
+        throw new Error('Received an empty response from the enhancement service.');
+      }
 
       setRevisedText(res.revision.revisedText);
       setExplanation(res.revision.explanation);
       setImprovements(res.improvements || []);
+      setIsStale(false);
       setRevisions([res.revision, ...revisions]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error enhancing text:', err);
+      const errMsg = err?.message || 'Failed to enhance writing. Please try again.';
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCopy = () => {
+    if (!revisedText) return;
     navigator.clipboard.writeText(revisedText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleAccept = () => {
+    if (!revisedText) return;
     setInputText(revisedText);
+    setIsStale(false);
     setAccepted(true);
+    setTimeout(() => setAccepted(false), 2500);
   };
 
   const modes = [
     { id: 'Formal Academic', label: 'Formal Academic', desc: 'Rigor, precise domain taxonomy, scholarly cadence' },
     { id: 'Natural Academic', label: 'Natural Academic', desc: 'Fluid sentence structures, humanized rhythm' },
     { id: 'Concise Academic', label: 'Concise Academic', desc: 'Removes bloat & passive padding without losing meaning' },
-    { id: 'Technical', label: 'Technical Precision', desc: 'Focus on mathematical, algorithmic, & empirical clarity' },
+    { id: 'Technical Precision', label: 'Technical Precision', desc: 'Focus on mathematical, algorithmic, & empirical clarity' },
     { id: 'Simplified Explanation', label: 'Simplified Explanation', desc: 'Intuitive breakdown of complex formulas or theorems' },
     { id: 'Clarity & Grammar', label: 'Clarity & Grammar', desc: 'Surgical grammar, diction, and flow enhancements' },
-    { id: 'Manual Editing', label: 'Custom Prompt', desc: 'Guided by your specific editorial constraints' },
+    { id: 'Custom Prompt', label: 'Custom Prompt', desc: 'Guided by your specific editorial constraints' },
   ];
 
   return (
@@ -115,7 +156,7 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
           <button
             key={mode.id}
             type="button"
-            onClick={() => setSelectedMode(mode.id as any)}
+            onClick={() => handleModeChange(mode.id)}
             className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               selectedMode === mode.id
                 ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 shadow-sm'
@@ -130,19 +171,44 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
         ))}
       </div>
 
-      {/* Custom instructions if in Manual Editing mode */}
-      {selectedMode === 'Manual Editing' && (
-        <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-          <label className="text-xs font-medium text-slate-300">
-            Custom Editorial Instructions
-          </label>
-          <input
-            type="text"
+      {/* Custom instructions if in Custom Prompt mode */}
+      {selectedMode === 'Custom Prompt' && (
+        <div className="p-3.5 rounded-xl bg-slate-900 border border-indigo-900/50 space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-indigo-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Custom Editorial Instructions</span>
+            </label>
+            <span className="text-[10px] text-slate-500">Applied directly to Gemini AI model prompt</span>
+          </div>
+          <textarea
+            rows={2}
             value={customInstructions}
-            onChange={(e) => setCustomInstructions(e.target.value)}
-            placeholder="e.g. Ensure compliance with IEEE style guidelines and emphasize sample size limitations"
-            className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            onChange={(e) => {
+              setCustomInstructions(e.target.value);
+              if (revisedText) setIsStale(true);
+            }}
+            placeholder="e.g. Rewrite this paragraph in clear academic English, correct all grammatical errors, improve sentence flow, preserve the original meaning, and keep the revised text under 60 words."
+            className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-normal resize-none"
           />
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-200 flex items-start gap-3 shadow-md animate-fadeIn">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div className="space-y-1 flex-1">
+            <div className="font-semibold text-rose-300">Enhancement Notice</div>
+            <p className="text-[11px] text-rose-200/90 leading-relaxed">{error}</p>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-rose-400 hover:text-rose-200 p-1 rounded-lg hover:bg-rose-900/40 cursor-pointer"
+            title="Dismiss notice"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -162,20 +228,20 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
           <textarea
             rows={12}
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Paste raw research abstract, methodology draft, or passage here..."
             className="flex-1 w-full rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-normal"
           />
 
           <button
             onClick={handleEnhance}
-            disabled={loading || !inputText.trim()}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all cursor-pointer"
+            disabled={loading || !inputText.trim() || inputText.trim().length < 10}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             {loading ? (
               <>
                 <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                <span>Enhancing Text ({selectedMode})...</span>
+                <span>Enhancing Text with Gemini ({selectedMode})...</span>
               </>
             ) : (
               <>
@@ -189,10 +255,18 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
         {/* Enhanced Revision Box */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg space-y-3 flex flex-col">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-indigo-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Enhanced Version ({selectedMode})</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Enhanced Version ({selectedMode})</span>
+              </span>
+              {isStale && revisedText && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-medium border border-amber-500/30 flex items-center gap-1">
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  Draft/Mode Changed
+                </span>
+              )}
+            </div>
             {revisedText && (
               <span className="text-[11px] text-slate-500">
                 {revisedText.length} characters
@@ -206,7 +280,7 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 text-center py-12">
                 <PenTool className="w-6 h-6 text-slate-600 mb-2" />
-                <p>Click "Enhance" on the left to generate the scholarly revision.</p>
+                <p>Click "Enhance with {selectedMode}" to generate the scholarly revision.</p>
               </div>
             )}
           </div>
@@ -235,7 +309,7 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
       </div>
 
       {/* Editorial Explanation & Improvements Card */}
-      {explanation && (
+      {explanation && !error && (
         <div className="p-4 rounded-2xl bg-indigo-950/25 border border-indigo-800/40 text-xs space-y-2">
           <h4 className="font-semibold text-indigo-300 flex items-center gap-2">
             <FileCheck className="w-4 h-4 text-indigo-400" />
@@ -267,8 +341,11 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
                   setInputText(rev.originalText);
                   setRevisedText(rev.revisedText);
                   setExplanation(rev.explanation);
+                  setSelectedMode(rev.mode);
+                  setIsStale(false);
+                  setError(null);
                 }}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs cursor-pointer flex items-center justify-between"
+                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs cursor-pointer flex items-center justify-between transition-colors"
               >
                 <div className="flex-1 pr-3 truncate">
                   <span className="font-medium text-slate-200 truncate block">

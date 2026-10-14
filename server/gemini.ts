@@ -4,47 +4,72 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 let aiClient: GoogleGenAI | null = null;
-let isApiKeyOperational = true;
-let lastSeenKey = process.env.GEMINI_API_KEY || '';
+let lastSeenKey = '';
 
-function getAiClient(): GoogleGenAI | null {
-  const currentKey = process.env.GEMINI_API_KEY || '';
+export function getAiClient(): GoogleGenAI | null {
+  dotenv.config({ override: true });
+  const currentKey = (process.env.GEMINI_API_KEY || '').trim();
   if (currentKey !== lastSeenKey) {
     lastSeenKey = currentKey;
-    isApiKeyOperational = true; // reset test if key changes
     aiClient = null;
   }
 
-  if (!isApiKeyOperational || !currentKey || currentKey === 'MY_GEMINI_API_KEY') {
+  if (!currentKey || currentKey === 'MY_GEMINI_API_KEY') {
     return null;
   }
 
   if (!aiClient) {
     try {
-      aiClient = new GoogleGenAI();
+      aiClient = new GoogleGenAI({
+        apiKey: currentKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
     } catch {
-      isApiKeyOperational = false;
       return null;
     }
   }
   return aiClient;
 }
 
-function handleApiError(error: any) {
-  // If the key is leaked, unauthorized, quota exhausted or invalid, disable future calls to prevent log spam
+export function formatGeminiError(error: any): Error {
   const errMsg = String(error?.message || error || '');
+  if (errMsg.includes('leaked')) {
+    return new Error(
+      'Gemini API authentication failed: Your API key was reported as leaked by Google. Please update your GEMINI_API_KEY with a fresh key in AI Studio Secrets.'
+    );
+  }
   if (
     errMsg.includes('403') ||
-    errMsg.includes('leaked') ||
     errMsg.includes('PERMISSION_DENIED') ||
     errMsg.includes('API_KEY_INVALID')
   ) {
-    isApiKeyOperational = false;
+    return new Error(
+      'Gemini API authentication failed (403): Invalid API key or permission denied. Please verify your GEMINI_API_KEY in AI Studio Secrets.'
+    );
   }
+  if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+    return new Error('Gemini API quota exceeded (429). Please wait a few moments before retrying.');
+  }
+  if (errMsg.includes('NOT_FOUND') || errMsg.includes('models/')) {
+    return new Error('The configured Gemini model is currently unavailable. Please verify model configuration.');
+  }
+  if (errMsg.includes('fetch failed') || errMsg.includes('ETIMEDOUT') || errMsg.includes('ECONNREFUSED')) {
+    return new Error('Network error connecting to Gemini API. Please check your connectivity and retry.');
+  }
+  return new Error(`Gemini API error: ${errMsg}`);
+}
+
+function handleApiError(error: any) {
+  console.warn('Gemini API error encounter:', error?.message || error);
 }
 
 export function getApiKeyStatus(): { isOperational: boolean } {
-  return { isOperational: isApiKeyOperational };
+  const key = (process.env.GEMINI_API_KEY || '').trim();
+  return { isOperational: !!key && key !== 'MY_GEMINI_API_KEY' };
 }
 
 const MODEL_NAME = 'gemini-3.8-flash';
@@ -804,40 +829,222 @@ export async function analyzeAiLikelihood(text: string, pages: { pageNumber: num
 
 /**
  * Writing Improvement Tool
+ * Provides deep academic editing across 7 scholarly modes via Gemini AI.
  */
 export async function improveWriting(params: {
   text: string;
-  mode: 'Formal Academic' | 'Natural Academic' | 'Concise Academic' | 'Technical' | 'Simplified Explanation' | 'Clarity & Grammar' | 'Manual Editing';
+  mode: string;
   customInstructions?: string;
-}) {
+}): Promise<{
+  revisedText: string;
+  explanation: string;
+  improvements: string[];
+  mode: string;
+}> {
+  const rawText = (params.text || '').trim();
+  if (!rawText || rawText.length < 10) {
+    throw new Error('Please provide at least 10 characters of academic text to enhance.');
+  }
+
+  // Normalize mode
+  let normalizedMode = (params.mode || 'Formal Academic').trim();
+  if (normalizedMode === 'Manual Editing' || normalizedMode === 'Custom Prompt') {
+    normalizedMode = 'Custom Prompt';
+  } else if (normalizedMode === 'Technical' || normalizedMode === 'Technical Precision') {
+    normalizedMode = 'Technical Precision';
+  }
+
   const client = getAiClient();
-  if (client) {
-    try {
-      const response = await client.models.generateContent({
-        model: MODEL_NAME,
-        contents: `Improve the following text in mode ${params.mode}: "${params.text}"`,
-        config: { responseMimeType: 'application/json' },
-      });
-      const parsed = parseJsonFromLlm<any>(response.text || '{}', null);
-      if (parsed && parsed.revisedText) return parsed;
-    } catch (e) {
-      handleApiError(e);
+  if (!client) {
+    throw new Error(
+      'Gemini API key is not configured or is invalid. Please set a valid GEMINI_API_KEY in your AI Studio Secrets or .env file.'
+    );
+  }
+
+  // Mode-specific instructions adhering to high academic publishing standards
+  let modeGuidance = '';
+  switch (normalizedMode) {
+    case 'Formal Academic':
+      modeGuidance = `MODE: Formal Academic
+OBJECTIVE: Rewrite the text in precise, formal, objective scholarly English. Improve academic vocabulary, syntax, logical flow, and sentence structure while preserving the original meaning. Replace informal phrasing, colloquialisms, and weak verbs with established scholarly conventions.`;
+      break;
+
+    case 'Natural Academic':
+      modeGuidance = `MODE: Natural Academic
+OBJECTIVE: Produce fluent, natural academic prose without robotic phrasing or unnecessary complexity. Enhance transitions, vary sentence length, and establish an authentic, human scholarly voice.`;
+      break;
+
+    case 'Concise Academic':
+      modeGuidance = `MODE: Concise Academic
+OBJECTIVE: Remove redundancy and unnecessary words while retaining the essential meaning, evidence, and technical details. Eliminate throat-clearing qualifiers, redundant phrases, and passive padding to maximize information density.`;
+      break;
+
+    case 'Technical Precision':
+      modeGuidance = `MODE: Technical Precision
+OBJECTIVE: Improve technical accuracy and clarity while strictly preserving domain-specific terminology, equations, variables, notation, and scientific claims. Resolve ambiguities in technical descriptions without inventing unsupported claims.`;
+      break;
+
+    case 'Simplified Explanation':
+      modeGuidance = `MODE: Simplified Explanation
+OBJECTIVE: Explain complex ideas in accessible language without changing their scientific meaning. Use clear metaphors or intuitive phrasing where helpful to make concepts transparent to an interdisciplinary reader.`;
+      break;
+
+    case 'Clarity & Grammar':
+      modeGuidance = `MODE: Clarity & Grammar
+OBJECTIVE: Correct grammar, spelling, punctuation, subject-verb agreement, and sentence construction while avoiding unnecessary rewriting. Fix errors while keeping the author's structure intact.`;
+      break;
+
+    case 'Custom Prompt':
+      modeGuidance = `MODE: Custom Prompt
+OBJECTIVE: Follow the user's custom editing instructions as the PRIMARY requirements while preserving factual accuracy and the intended meaning.
+USER CUSTOM INSTRUCTIONS:
+"${params.customInstructions || 'Rewrite in clear academic English, correct errors, and improve sentence flow.'}"`;
+      break;
+
+    default:
+      modeGuidance = `MODE: Formal Academic
+OBJECTIVE: Rewrite the text in precise, formal, objective scholarly English. Improve academic vocabulary, syntax, logical flow, and sentence structure while preserving the original meaning.`;
+      break;
+  }
+
+  if (params.customInstructions && normalizedMode !== 'Custom Prompt') {
+    modeGuidance += `\nADDITIONAL USER EDITORIAL DIRECTIVE: "${params.customInstructions}"`;
+  }
+
+  const systemInstructions = `You are a distinguished peer-reviewer, journal editor, and principal scholarly writing specialist.
+Your mission is to REWRITE the author's draft passage according to the specified editing mode.
+OPERATIONAL RULES:
+1. Actively perform the requested rewriting rather than describing potential improvements. Produce the revised text.
+2. Preserve all mathematical notation, equations, variables, citations, and empirical claims.
+3. Do not invent research findings, citations, references, statistics, or unsupported claims.
+4. Output STRICTLY VALID JSON. Do not include markdown code fences (\`\`\`json or \`\`\`) in the response text.
+5. Expected JSON structure:
+{
+  "revisedText": "Complete rewritten text reflecting the requested mode and instructions",
+  "explanation": "Specific, factual editorial rationale describing the exact structural and stylistic improvements made to this passage",
+  "improvements": [
+    "Specific improvement 1 actually implemented in the text",
+    "Specific improvement 2 actually implemented in the text",
+    "Specific improvement 3 actually implemented in the text"
+  ]
+}`;
+
+  const buildPrompt = (isRetry: boolean) => `${systemInstructions}
+
+${modeGuidance}
+
+${
+  isRetry
+    ? `CRITICAL ENFORCEMENT: Your previous generation was rejected because it returned the exact original draft unmodified. You MUST rewrite the text now to actively reflect the "${normalizedMode}" requirements. Fix errors, enhance vocabulary, restructure awkward phrasing, and ensure the revised text is meaningfully distinct from the original while preserving core facts.`
+    : ''
+}
+
+AUTHOR DRAFT:
+"""
+${rawText}
+"""`;
+
+  const primaryModel = MODEL_NAME || 'gemini-3.8-flash';
+  const fallbackModel = 'gemini-2.5-flash';
+
+  const callModel = async (modelName: string, promptText: string) => {
+    return await client.models.generateContent({
+      model: modelName,
+      contents: promptText,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+  };
+
+  let rawOutput = '';
+  let modelUsed = primaryModel;
+
+  try {
+    const res = await callModel(primaryModel, buildPrompt(false));
+    rawOutput = res.text || '';
+  } catch (err: any) {
+    const errMsg = String(err?.message || err || '');
+    if (errMsg.includes('NOT_FOUND') || errMsg.includes('404') || errMsg.includes('not supported')) {
+      try {
+        const fallbackRes = await callModel(fallbackModel, buildPrompt(false));
+        rawOutput = fallbackRes.text || '';
+        modelUsed = fallbackModel;
+      } catch (err2: any) {
+        throw formatGeminiError(err2);
+      }
+    } else {
+      throw formatGeminiError(err);
     }
   }
 
-  // Editorial enhancement fallback
-  let clean = params.text.trim();
-  clean = clean.replace(/\b(very|extremely|really|a lot of)\b/gi, 'substantially');
-  clean = clean.replace(/\bin order to\b/gi, 'to');
-  clean = clean.replace(/\bdue to the fact that\b/gi, 'because');
+  let parsed = parseJsonFromLlm<{
+    revisedText?: string;
+    explanation?: string;
+    improvements?: string[];
+  }>(rawOutput, {});
+
+  let cleanRevised = (parsed.revisedText || '').trim();
+
+  // If revisedText is missing from JSON, check if the raw output was plain text
+  if (!cleanRevised && rawOutput.trim()) {
+    let stripped = rawOutput.trim();
+    if (stripped.startsWith('```json')) {
+      stripped = stripped.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+    } else if (stripped.startsWith('```')) {
+      stripped = stripped.replace(/^```\s*/, '').replace(/```\s*$/, '');
+    }
+    cleanRevised = stripped.trim();
+  }
+
+  // Compare revised with original (case-insensitive & trimmed)
+  if (cleanRevised && cleanRevised.toLowerCase() === rawText.toLowerCase()) {
+    // Retry once with stronger, explicit rewriting instruction
+    try {
+      const retryRes = await callModel(modelUsed, buildPrompt(true));
+      const retryRaw = retryRes.text || '';
+      const retryParsed = parseJsonFromLlm<{
+        revisedText?: string;
+        explanation?: string;
+        improvements?: string[];
+      }>(retryRaw, {});
+
+      if (
+        retryParsed.revisedText &&
+        retryParsed.revisedText.trim().toLowerCase() !== rawText.toLowerCase()
+      ) {
+        parsed = retryParsed;
+        cleanRevised = retryParsed.revisedText.trim();
+      }
+    } catch (retryErr: any) {
+      console.warn('Retry call failed:', retryErr?.message);
+    }
+  }
+
+  // Validate that output is non-empty
+  if (!cleanRevised) {
+    throw new Error('The AI model generated an empty response. Please verify the input and try again.');
+  }
+
+  // If still identical despite retry, fail honestly
+  if (cleanRevised.toLowerCase() === rawText.toLowerCase()) {
+    throw new Error(
+      `The AI enhancement service returned the text without modifications in "${normalizedMode}" mode. Please select a different writing mode or provide explicit custom instructions.`
+    );
+  }
 
   return {
-    revisedText: clean,
-    explanation: `Enhanced for ${params.mode}. Streamlined redundant phrasing, improved syntactic precision, and reinforced scholarly tone.`,
-    improvements: [
-      'Eliminated filler phrases to enhance conciseness',
-      'Refined academic vocabulary and active voice balance',
-    ],
-    mode: params.mode,
+    revisedText: cleanRevised,
+    explanation:
+      parsed.explanation?.trim() ||
+      `Enhanced according to ${normalizedMode} standards. Improved sentence architecture, academic diction, and flow while retaining factual integrity.`,
+    improvements:
+      Array.isArray(parsed.improvements) && parsed.improvements.length > 0
+        ? parsed.improvements
+        : [
+            `Calibrated vocabulary and phrasing to align with ${normalizedMode} conventions`,
+            'Refined sentence structure and scholarly cadence',
+          ],
+    mode: normalizedMode,
   };
 }

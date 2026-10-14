@@ -183,215 +183,7 @@
       }
     }
   ],
-  "contextSessions": [
-    {
-      "id": "sess_1791890731139_70xy2o",
-      "userId": "usr_default",
-      "topicOrQuestion": "PARKINSON’S DISEASE DETECTION FROM SPEECH",
-      "additionalContext": "ADVANCED PROJECT REPORT\nPARKINSON’S DISEASE DETECTION FROM SPEECH\nUSING A NEURAL NETWORK\nA Machine Learning and Neural Network Based Study\nSubmitted in partial fulfilment of the requirements for the degree of\nBACHELOR OF TECHNOLOGY\nDepartment of Computer Science and Engineering\nPrepared By:\nName: ______________________________\nRoll No.: ___________________________\nRegistration No.: ____________________\nUnder the Guidance of:\n_______________________________\nAcademic Session: 2026–2027\nCERTIFICATE\nThis is to certify that the project report entitled “Parkinson’s Disease Detection from Speech Using a Neural Network” is a bonafide academic project prepared by __________________________ of the Department of Computer Science and Engineering. The work presents the design of a machine-learning pipeline for classification of Parkinson’s disease using speech-derived acoustic measurements.\nThe report has been prepared for academic evaluation and demonstrates understanding of data preprocessing, neural-network architecture, model training, performance evaluation and responsible interpretation of health-related machine-learning results.\nGuide Signature: ____________________ Date: __________\nHead of Department: _________________ Date: __________\nACKNOWLEDGEMENT\nI express my sincere gratitude to my project guide and the Department of Computer Science and Engineering for their guidance and support. I also acknowledge the UCI Machine Learning Repository and the researchers who created the Parkinson’s speech datasets used as the methodological basis for this project.\nABSTRACT\nParkinson’s disease (PD) is a progressive neurological disorder that can affect speech and voice. Acoustic changes such as instability in pitch, amplitude variation and altered noise characteristics can be represented numerically and used for computational analysis. This project develops an advanced academic framework for detecting Parkinson’s disease from speech-derived measurements using a multilayer perceptron (MLP) neural network.\nThe study uses the Oxford Parkinson’s Disease Detection Dataset as the principal benchmark. The UCI repository describes the dataset as multivariate, with 197 instances and 22 features, collected from 31 people, including 23 people with Parkinson’s disease. The project pipeline covers data inspection, target separation, feature scaling, leakage-aware splitting, neural-network training and multi-metric evaluation.\nThe proposed architecture uses dense layers with ReLU activation, dropout regularization and a sigmoid output for binary classification. Accuracy, precision, recall, specificity, F1-score and confusion-matrix analysis are recommended. The report additionally discusses subject-level leakage, small sample size, external validation, demographic variation, recording conditions and the distinction between academic classification and clinical diagnosis.\nKeywords: Parkinson’s disease, speech analysis, neural network, multilayer perceptron, acoustic features, machine learning, classification, voice biomarkers.\nTABLE OF CONTENTS\n1. Introduction\n2. Problem Statement and Objectives\n3. Background and Literature Survey\n4. Dataset and Speech Features\n5. Proposed Methodology\n6. Neural Network Architecture\n7. Experimental Design\n8. Results and Analysis\n9. Comparison with Existing Techniques\n10. Limitations, Ethics and Challenges\n11. Conclusion and Future Scope\n12. Implementation and Reproducibility\nReferences.\n1. INTRODUCTION\nParkinson’s disease is a neurological disorder associated with progressive changes in movement and other functions. Speech can be affected through alterations in phonation, articulation, loudness and temporal characteristics. Because these changes can be quantified from recordings, speech analysis has become an active area of machine-learning research.\nThe core objective of this project is to build a reproducible binary classifier that maps speech-derived acoustic measurements to two classes: healthy and Parkinson’s disease. The project is not intended to replace a clinician or to establish a medical diagnosis. Instead, it demonstrates the engineering and analytical workflow needed to investigate a voice-based machine-learning biomarker.\nThe supplied project format emphasizes title, abstract, keywords, introduction, literature survey, methodology, experiments, comparisons, limitations, conclusion and references. This expanded report follows that structure while adding deeper technical discussion, model architecture, evaluation design, reproducibility guidance and responsible-use considerations.\n1.1 Motivation\nTraditional diagnosis depends on clinical examination and specialist assessment. A computational speech system could potentially support screening or remote monitoring by extracting measurable characteristics from voice. The appeal of such systems lies in their non-invasive nature and the possibility of frequent measurements. However, real-world use requires careful validation because speech is influenced by many factors beyond disease status.\n1.2 Scope\nThe scope covers pre-extracted speech/acoustic features, binary classification, an MLP neural network, baseline comparison, visual analysis and discussion of generalization. Raw waveform end-to-end modelling is identified as future work.\n2. PROBLEM STATEMENT AND OBJECTIVES\nProblem statement: Given a vector of speech-derived acoustic measurements from a participant, develop a neural-network model capable of distinguishing a Parkinson’s disease class from a healthy class under a carefully controlled evaluation protocol.\n2.1 Objectives\nStudy acoustic characteristics associated with Parkinson’s disease speech.\nPrepare a clean and standardized feature matrix for neural-network learning.\nDesign a compact multilayer perceptron suitable for a small tabular dataset.\nUse leakage-aware evaluation and report several complementary metrics.\nCompare the neural network conceptually with classical machine-learning baselines.\nIdentify limitations that prevent direct interpretation as a clinical diagnostic system.\nProvide a reproducible implementation plan for a BTech-level project.\n3. BACKGROUND AND LITERATURE SURVEY\nResearch on Parkinson’s speech analysis spans statistical signal processing, classical machine learning and modern deep learning. Early work demonstrated that dysphonia measurements could be investigated for remote monitoring. Later studies explored classifiers such as support vector machines, decision trees, random forests and neural networks.\nRecent reviews show increasing interest in deep-learning approaches, including CNN, RNN/LSTM/GRU and transformer-based models. At the same time, systematic reviews repeatedly identify dataset heterogeneity, small participant counts, inconsistent validation and limited external testing as major barriers to reliable comparison.\nWork / Resource\nApproach\nContribution\nLimitation\nOxford PD Speech Dataset\nAcoustic feature classification\nAccessible benchmark for PD vs healthy classification\nSmall participant pool; repeated recordings\nNeural-network scoping review\nANN/DNN/CNN/RNN/autoencoder approaches\nMaps neural-network applications\nStudies use heterogeneous datasets\nRecent voice ML/DL reviews\nSVM, RF, CNN, RNN, transformers\nBroad state-of-the-art overview\nValidation and datasets vary\nParkinson’s Speech Multiple Sound Recordings\nMultiple recording types\nBroader speech-condition coverage\nMore complex experimental design\n4. DATASET AND SPEECH FEATURES\nThe primary benchmark is the Oxford Parkinson’s Disease Detection Dataset from the UCI Machine Learning Repository. UCI describes it as a multivariate dataset containing 197 instances and 22 features, collected from 31 people, of whom 23 had Parkinson’s disease. The target status distinguishes healthy and Parkinson’s classes.\nAttribute\nDescription\nDataset\nOxford Parkinson’s Disease Detection Dataset\nInstances\n197 reported by UCI\nParticipants\n31\nPD participants\n23\nFeatures\n22\nTarget\nstatus: healthy / Parkinson’s\nFeature type\nReal-valued acoustic measurements\n4.1 Acoustic Feature Groups\nFeature group\nExamples\nPurpose\nFundamental frequency\nMDVP:Fo, MDVP:Fhi, MDVP:Flo\nPitch-related measurements\nJitter\nJitter, RAP, PPQ, DDP\nFrequency variation\nShimmer\nShimmer, APQ, DDA\nAmplitude variation\nNoise measures\nNHR, HNR\nNoise and harmonic characteristics\nNonlinear measures\nRPDE, DFA, D2\nComplexity and dynamical behavior\nOther variation measures\nspread1, spread2, PPE\nNonlinear pitch variation\nA key dataset issue is repeated observations: multiple recordings can be associated with the same participant. If recordings from one participant appear in both training and test partitions, the evaluation can be overly optimistic. Participant-aware splitting is therefore preferred whenever a participant identifier is available.\n5. PROPOSED METHODOLOGY\nThe proposed system follows a structured pipeline:\nStage\nProcess\nOutput\n1\nDataset acquisition\nRaw acoustic-feature table\n2\nData audit\nDimensions, labels, missing values and duplicates\n3\nFeature preparation\nPredictor matrix X and target y\n4\nScaling\nStandardized feature matrix\n5\nParticipant-aware partitioning\nTrain / validation / test data\n6\nModel training\nOptimized MLP parameters\n7\nPrediction\nPD probability and class\n8\nEvaluation\nMetrics and confusion matrix\n9\nInterpretation\nError analysis and limitations\nPreprocessing\nRemove identifier fields from the predictive matrix.\nCheck missing values and invalid numeric entries.\nInspect class distribution.\nFit the scaler only on the training partition.\nApply the same fitted transformation to validation and test data.\nKeep recordings from the same participant together whenever participant identifiers permit.\n5.2 Mathematical Formulation\nFor an input vector x, a dense layer computes z = Wx + b. A ReLU hidden layer uses f(z) = max(0,z). The final sigmoid layer computes p = 1/(1+e^-z), where p represents the estimated probability of the positive class. Binary cross-entropy can be written as L = -[y log(p) + (1-y) log(1-p)].\n6. NEURAL NETWORK ARCHITECTURE\nLayer\nConfiguration\nFunction\nInput\n22 features\nReceives standardized acoustic measurements\nDense 1\n64 neurons, ReLU\nLearns nonlinear combinations\nDropout\n0.20\nRegularization\nDense 2\n32 neurons, ReLU\nLearns higher-level representation\nDropout\n0.20\nRegularization\nOutput\n1 neuron, sigmoid\nBinary probability\n6.1 Training Strategy\nA practical training configuration uses Adam optimization with binary cross-entropy. Early stopping based on validation loss can prevent unnecessary training after generalization performance stops improving. The final implementation should record the exact learning rate, batch size, number of epochs, dropout rate, random seed and stopping criterion.\n6.2 Why an MLP?\nThe selected data are tabular, pre-extracted acoustic measurements rather than sequential raw waveforms. An MLP is therefore a technically appropriate neural architecture for demonstrating nonlinear classification without introducing the additional complexity of spectrogram generation or sequence modelling.\n6.3 Regularization\nBecause the dataset is small, regularization is important. Dropout, early stopping, modest network depth and careful validation can reduce overfitting. Cross-validation can also be considered, provided that folds are created at the participant level.\n7. EXPERIMENTAL DESIGN\nThe experiment should use a held-out test set that is not used for model selection. If participant identifiers are available, all recordings from a participant must remain in one partition. Hyperparameters should be selected using training/validation data only.\n7.1 Evaluation Metrics\nMetric\nDefinition\nWhy it matters\nAccuracy\nCorrect predictions / all predictions\nOverall classification performance\nPrecision\nTP / (TP+FP)\nControls false-positive burden\nRecall\nTP / (TP+FN)\nMeasures sensitivity to PD class\nSpecificity\nTN / (TN+FP)\nMeasures correct healthy classification\nF1-score\n2PR/(P+R)\nBalances precision and recall\nROC-AUC\nArea under ROC curve\nThreshold-independent ranking quality\n7.2 Experimental Controls\nUse the same test partition for every baseline.\nApply preprocessing consistently.\nDo not tune on the test set.\nReport confidence intervals or repeated-fold variation when feasible.\nRecord software versions and random seeds.\nKeep illustrative numbers separate from actual measured results.\n8. RESULTS AND ANALYSIS\nThe following visualizations are intentionally marked as illustrative. They demonstrate how the final report can present training curves, model comparison, confusion-matrix analysis and feature influence. They are not claims about experimentally measured performance on the dataset.\nFigure 1. Illustrative training and validation loss. A rising validation loss while training loss continues to fall can indicate overfitting.\nFigure 2. Illustrative accuracy comparison across baseline and neural-network approaches.\n8.1 Confusion Matrix Analysis\nFigure 3. Illustrative confusion matrix. Replace values with predictions from the held-out test set.\nFor the illustrative matrix, the diagonal entries represent correct classifications while the off-diagonal entries represent errors. In the final experiment, the matrix should be accompanied by precision, recall, specificity and F1-score so that class-specific behavior is transparent.\n8.2 Feature Influence\nFigure 4. Illustrative feature-influence ranking. This is a demonstration graphic, not an explanation of the trained model.\nFeature influence should be computed using an appropriate explainability method such as permutation importance or SHAP after the model has been trained. The method and its limitations should be reported. Feature importance should not be interpreted as causal evidence that a particular voice characteristic causes Parkinson’s disease.\n9. COMPARISON WITH EXISTING TECHNIQUES\nTechnique\nStrengths\nWeaknesses\nRole in project\nLogistic Regression\nSimple and interpretable\nLinear boundary\nBaseline\nSVM\nStrong on small datasets\nKernel/parameter selection\nClassical baseline\nRandom Forest\nNonlinear and robust\nLess compact explanation\nTree baseline\nMLP\nNonlinear feature interactions\nCan overfit small datasets\nProposed model\nCNN\nLearns local patterns\nNeeds suitable image/time-frequency input\nFuture extension\nLSTM/GRU\nModels sequences\nHigher complexity and data needs\nFuture extension\nTransformer\nPowerful representation learning\nComputational and data demands\nFuture extension\nThe appropriate conclusion is not that neural networks always outperform classical algorithms. Instead, the neural network is a proposed nonlinear learner whose value must be established under the same data split and evaluation protocol as the baselines.\n9.1 Ablation Studies\nAn advanced version of the project can compare: no dropout vs dropout; standardized vs unstandardized inputs; 1 vs 2 hidden layers; different hidden sizes; and participant-aware vs row-level splitting. Such ablations help identify which design choices materially affect performance.\n10. LIMITATIONS, ETHICS AND CHALLENGES\nSmall sample size\nThe benchmark is relatively small at the participant level. Neural networks can overfit such data.\nParticipant leakage\nRepeated recordings from the same person can inflate test performance if splitting is performed at row level.\nRecording variability\nMicrophone, room acoustics, language, speaking task and background noise can change acoustic features.\nClinical variability\nDisease severity, medication state and co-existing conditions can influence speech.\nGeneralization\nPerformance on one benchmark does not establish performance in hospitals or community populations.\nInterpretability\nA classification probability is not itself a clinical explanation.\nPrivacy\nVoice recordings can be personally identifying and must be handled with appropriate consent and security.\nFairness\nModels should be evaluated across relevant demographic and linguistic groups where data permit.\nResponsible-use statement: This project is an academic research prototype. It should not be used to diagnose, exclude, or make treatment decisions about an individual without appropriate clinical validation and oversight.\n11. CONCLUSION AND FUTURE SCOPE\nThis project presents an advanced neural-network framework for Parkinson’s disease detection from speech-derived acoustic measurements. It integrates data preprocessing, leakage-aware validation, MLP architecture, regularization, multi-metric evaluation, baseline comparison and responsible interpretation.\nThe principal engineering lesson is that reliable evaluation is as important as model architecture. On small biomedical datasets, a high training score can be misleading. Participant-aware splitting, independent testing, repeated validation and transparent reporting are essential.\n11.1 Future Scope\nUse larger multi-centre speech datasets.\nEvaluate raw audio and spectrogram-based CNN models.\nInvestigate LSTM/GRU and transformer-based speech representations.\nStudy multilingual and cross-device generalization.\nDevelop explainable and calibrated predictions.\nPerform external validation on an independent cohort.\nInvestigate longitudinal speech monitoring rather than single-session classification.\nEvaluate robustness to background noise and recording-device changes.\n12. IMPLEMENTATION AND REPRODUCIBILITY\nComponent\nRecommended choice\nProgramming language\nPython\nData handling\nPandas, NumPy\nPreprocessing\nScikit-learn StandardScaler\nNeural network\nTensorFlow/Keras or PyTorch\nEvaluation\nScikit-learn\nVisualization\nMatplotlib\nExperiment tracking\nCSV/JSON logs or MLflow\nVersion control\nGit\nEnvironment\nPython virtual environment / requirements file\n12.1 Recommended Project Structure\ndata/ — dataset files and metadata\nsrc/ — preprocessing, model and evaluation scripts\nnotebooks/ — exploratory analysis\nmodels/ — saved trained models\nfigures/ — generated charts\nreports/ — final report and result tables\nREADME.md — setup and reproduction instructions\n12.2 Reproducibility Checklist\nDataset name and version\nExact feature list\nParticipant-level split strategy\nRandom seed\nScaler parameters learned from training data\nNetwork architecture\nOptimizer and learning rate\nBatch size and epochs\nEarly-stopping criterion\nAll evaluation metrics\nSoftware/library versions\nREFERENCES\n[1] Little, M. A. (2007). Parkinsons. UCI Machine Learning Repository. DOI: 10.24432/C59C74.\n[2] Little, M. A., McSharry, P. E., Hunter, E. J., & Ramig, L. O. (2008). Suitability of dysphonia measurements for telemonitoring of Parkinson’s disease. IEEE Transactions on Biomedical Engineering.\n[3] Tsanas, A., & Little, M. (2009). Parkinsons Telemonitoring. UCI Machine Learning Repository. DOI: 10.24432/C5ZS3N.\n[4] Sakar, C. O., Serbes, G., Gunduz, A., Nizam, H., Sakar, B. E., Tutuncu, M., Aydin, T., Isenkul, M. E., & Apaydin, H. (2019). A comparative analysis of speech signal processing algorithms for Parkinson’s disease classification and the use of the UCI Parkinson’s dataset.\n[5] Sakar, C. O. et al. (2018). Parkinson’s Disease Classification. UCI Machine Learning Repository. DOI: 10.24432/C5MS4X.\n[6] UCI Machine Learning Repository. Parkinson’s Speech with Multiple Types of Sound Recordings. Dataset documentation.\n[7] UCI Machine Learning Repository. Parkinson Dataset with replicated acoustic features. Dataset documentation.\n[8] Review literature on neural-network approaches for Parkinson’s disease detection from speech and voice.\n[9] Recent systematic reviews of voice-based machine learning and deep learning approaches for Parkinson’s disease detection.",
-      "researchObjective": "",
-      "academicDomain": "Computer Science & AI",
-      "depth": "In-Depth Analysis",
-      "responseStyle": "Academic & Formal",
-      "createdAt": "2026-10-13T11:25:32.138Z",
-      "updatedAt": "2026-10-13T11:26:06.279Z",
-      "status": "completed",
-      "chatHistory": [
-        {
-          "id": "msg_1791890766279_u",
-          "role": "user",
-          "content": "which topic is realted to AI",
-          "timestamp": "2026-10-13T11:26:06.279Z"
-        },
-        {
-          "id": "msg_1791890766279_a",
-          "role": "assistant",
-          "content": "Regarding \"which topic is realted to AI\" for your research in \"PARKINSON’S DISEASE DETECTION FROM SPEECH\":\n\nKey considerations for your research design:\n1. **Methodological Rigor**: Establish clear baseline benchmarks before introducing novel complex architectures.\n2. **Evaluation Metrics**: Report Balanced Accuracy, Area Under the ROC Curve (AUC-ROC), and F1-score rather than raw accuracy, especially if classes are imbalanced.\n3. **Ablation Studies**: Systematically verify which feature representations and loss components are genuinely driving performance improvements.",
-          "timestamp": "2026-10-13T11:26:06.279Z"
-        }
-      ],
-      "report": {
-        "topicOverview": "This research investigation addresses \"PARKINSON’S DISEASE DETECTION FROM SPEECH\". Within Computer Science & AI, understanding theoretical formulations, signal representations, and operational constraints is essential for designing resilient computational solutions. Recent academic research indicates that bridging the gap between theoretical architectures and real-world deployment requires rigorous evaluation against non-stationary distributions, multi-modal features, and hardware limits.",
-        "keyConcepts": [
-          {
-            "concept": "Multilayer Perceptron (MLP) Pipeline",
-            "explanation": "Computational learning architecture tailored for feature extraction, representation learning, and predictive inference in Computer Science & AI."
-          },
-          {
-            "concept": "Speech Acoustic Measurements",
-            "explanation": "Parametric representations capturing salient target signals while filtering out ambient noise or physiological variation."
-          },
-          {
-            "concept": "Leakage-Aware Evaluation",
-            "explanation": "Partitioning strategy (such as Leave-One-Subject-Out or participant-level splitting) preventing overly optimistic performance estimates from repeated observations."
-          },
-          {
-            "concept": "Cross-Validation & Regularization",
-            "explanation": "Regularization strategies (e.g. dropout, early stopping, and weight decay) preventing overparameterized models from memorizing small cohort datasets."
-          }
-        ],
-        "researchBackground": "Historically, inquiries into parkinson’s disease detection from speech relied heavily on hand-crafted heuristics and statistical feature engineering. The emergence of modern neural architectures, self-supervised representations, and automated feature extractors has substantially boosted classification benchmarks. However, critical challenges persist regarding cohort diversity, recording consistency, interpretability, and robustness in real-world environments.",
-        "existingApproaches": [
-          {
-            "approach": "Classical Classifiers (Convolutional Neural Networks (CNN))",
-            "pros": "Highly interpretable, computationally lightweight, transparent decision boundaries on small sample sizes.",
-            "cons": "Limited capacity to capture high-order non-linear interactions across diverse subject cohorts."
-          },
-          {
-            "approach": "Dense Deep Neural Architectures (Multilayer Perceptron (MLP))",
-            "pros": "Automated non-linear representation learning from standardized feature matrices without manual rule authoring.",
-            "cons": "Susceptible to overfitting on small participant cohorts; requires rigorous regularization and early stopping."
-          },
-          {
-            "approach": "Hybrid & Multi-Modal Feature Models",
-            "pros": "Combines pre-extracted domain biomarkers with learned continuous representations for balanced sensitivity.",
-            "cons": "Higher architectural complexity and increased sensitivity to missing or corrupted sensor channels."
-          }
-        ],
-        "methodologyAnalysis": "The standard methodological pipeline consists of signal acquisition, artifact filtering, feature standardization (e.g. z-score scaling fitted strictly on training partitions), followed by Multilayer Perceptron (MLP) training. Special care is required for validation schemes to ensure all recordings from a given participant remain exclusively in either the train or test set, preventing subtle data leakage.",
-        "currentChallenges": [
-          "Participant-level data leakage from repeated subject recordings across train-test splits",
-          "Constrained participant cohort size increasing susceptibility to overfitting",
-          "Acoustic, environmental, and recording-hardware variability across acquisition setups",
-          "Translational gap between academic classification benchmarks and real-world clinical decision-making"
-        ],
-        "potentialResearchGaps": [
-          {
-            "title": "Leakage-Resilient Subject-Level Validation for PARKINSON’S DISEASE DETECTION FROM SPEECH",
-            "description": "Many benchmark studies evaluate Multilayer Perceptron (MLP) models with row-level shuffling, artificially inflating accuracy by allowing repeated participant recordings to span train and test sets.",
-            "gapType": "methodological",
-            "urgency": "High"
-          },
-          {
-            "title": "Cross-Device Hardware Robustness on Oxford Parkinson's Disease Detection Dataset",
-            "description": "Existing models degrade significantly when evaluated on hardware or cohorts differing from the training distribution. Lack of lightweight unsupervised calibration frameworks.",
-            "gapType": "dataset",
-            "urgency": "High"
-          },
-          {
-            "title": "Interpretable Biomarker Attribution Networks",
-            "description": "Black-box neural networks lack transparent feature attribution explaining which exact feature parameters or temporal segments drove the classification decision.",
-            "gapType": "theoretical",
-            "urgency": "Medium"
-          }
-        ],
-        "researchQuestions": [
-          "How does Multilayer Perceptron (MLP) performance compare to Convolutional Neural Networks (CNN) under strict participant-isolated cross-validation?",
-          "What data augmentation and contrastive learning techniques best mitigate device-specific recording bias?",
-          "Can self-supervised pre-training transfer effectively to specialized Computer Science & AI tasks with small cohort benchmarks?"
-        ],
-        "potentialContributions": [
-          "A reproducible benchmark pipeline with strict subject isolation to prevent optimistic data leakage.",
-          "A lightweight regularized architecture with post-hoc feature attribution verified by domain specialists.",
-          "Empirical comparative analysis evaluating trade-offs between model complexity, latency, and out-of-distribution robustness."
-        ],
-        "recommendedMethodologies": [
-          "Employ Leave-One-Subject-Out (LOSO) cross-validation to guarantee strict participant partition.",
-          "Apply standard scaling derived solely from training folds to avoid lookahead contamination.",
-          "Deploy SHAP or permutation importance for rigorous post-hoc biomarker attribution."
-        ],
-        "relatedResearchPapers": [
-          {
-            "title": "Deep 1D-Convnet for accurate Parkinson disease detection and severity prediction from gait",
-            "authors": [
-              "Imanne El Maachi",
-              "Guillaume-Alexandre Bilodeau",
-              "Wassim Bouachir"
-            ],
-            "year": 2019,
-            "source": "arXiv.org",
-            "url": "http://arxiv.org/abs/1910.11509v4",
-            "abstractExcerpt": "Diagnosing Parkinson's disease is a complex task that requires the evaluation of several motor and non-motor symptoms. During diagnosis, gait abnormalities are among the important symptoms that physicians should consider...",
-            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
-          },
-          {
-            "title": "Supervised Speech Representation Learning for Parkinson's Disease Classification",
-            "authors": [
-              "Parvaneh Janbakhshi",
-              "Ina Kodrasi"
-            ],
-            "year": 2021,
-            "source": "arXiv.org",
-            "url": "http://arxiv.org/abs/2106.00531v2",
-            "abstractExcerpt": "Recently proposed automatic pathological speech classification techniques use unsupervised auto-encoders to obtain a high-level abstract representation of speech. Since these representations are learned based on reconstr...",
-            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
-          },
-          {
-            "title": "A Three-groups Non-local Model for Combining Heterogeneous Data Sources to Identify Genes Associated with Parkinson's Disease",
-            "authors": [
-              "Troy P. Wixson",
-              "Benjamin A. Shaby",
-              "Daisy L. Philtron",
-              "International Parkinson Disease Genomics Consortium",
-              "Leandro A. Lima",
-              "Stacia K. Wyman",
-              "Julia A. Kaye",
-              "Steven Finkbeiner"
-            ],
-            "year": 2024,
-            "source": "arXiv.org",
-            "url": "http://arxiv.org/abs/2406.05262v2",
-            "abstractExcerpt": "We seek to identify genes involved in Parkinson's Disease (PD) by combining information across different experiment types. Each experiment, taken individually, may contain too little information to distinguish some impor...",
-            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
-          },
-          {
-            "title": "Parkinson Disease Detection from Speech Articulation Neuromechanics",
-            "authors": [
-              "Pedro Gómez‐Vilda",
-              "Jiří Mekyska",
-              "José Manuel Ferrández Vicente",
-              "Daniel Palacios Alonso"
-            ],
-            "year": 2017,
-            "source": "OpenAlex Index",
-            "url": "https://doi.org/10.3389/fninf.2017.00056",
-            "abstractExcerpt": "Aim: The research described is intended to give a description of articulation dynamics as a correlate of the kinematic behavior of the jaw-tongue biomechanical system, encoded as a probability distribution of an absolute...",
-            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
-          },
-          {
-            "title": "Detection and Forecasting of Parkinson Disease Progression from Speech Signal Features Using MultiLayer Perceptron and LSTM",
-            "authors": [
-              "Ali, Majid",
-              "Hina Shakir",
-              "Asia Samreen",
-              "Sohaib Ahmed"
-            ],
-            "year": 2024,
-            "source": "arXiv.org",
-            "url": "https://doi.org/10.48550/arxiv.2412.18248",
-            "abstractExcerpt": "Accurate diagnosis of Parkinson disease, especially in its early stages, can be a challenging task. The application of machine learning techniques helps improve the diagnostic accuracy of Parkinson disease detection but ...",
-            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
-          }
-        ],
-        "furtherReading": [
-          {
-            "title": "Benchmark Survey on Machine Learning in Computer Science & AI",
-            "type": "Survey",
-            "linkOrReference": "Academic Literature Index 2024"
-          },
-          {
-            "title": "Guidelines for Reproducible Machine Learning in Healthcare & Sensing",
-            "type": "Methodology Guide",
-            "linkOrReference": "Nature Machine Intelligence"
-          }
-        ],
-        "verifiedVsHypotheses": {
-          "verifiedFacts": [
-            "Data leakage from improper train-test partitioning frequently yields over-optimistic validation accuracy in published literature.",
-            "Acoustic and environmental sensor variability introduces non-trivial distribution shift across recording devices."
-          ],
-          "aiInterpretations": [
-            "Self-supervised representation learning can likely bridge demographic variance better than purely supervised shallow baselines.",
-            "Compact regularized neural architectures offer an optimal trade-off between parameter efficiency and accuracy on small tabular biomedical datasets."
-          ],
-          "untestedHypotheses": [
-            "Device-invariant contrastive regularization can reduce cross-sensor performance drops below 5% without requiring labelled target calibration."
-          ]
-        },
-        "generatedAt": "2026-10-13T11:25:33.590Z"
-      }
-    }
-  ],
+  "contextSessions": [],
   "gaps": [],
   "comparisons": [],
   "executionLogs": [
@@ -595,7 +387,7 @@
       "message": "Discovered 5 verified academic papers on \"Medical AI & Brain MRI Tumor Segmentation\" from arXiv & OpenAlex.",
       "type": "info",
       "category": "discovery",
-      "read": false,
+      "read": true,
       "createdAt": "2026-10-13T11:40:31.338Z"
     },
     {
@@ -605,7 +397,7 @@
       "message": "Successfully extracted and analyzed \"NeuroVision: An Automated Brain MRI Tumor Seg\"",
       "type": "success",
       "category": "paper",
-      "read": false,
+      "read": true,
       "createdAt": "2026-10-13T11:27:33.511Z",
       "actionUrl": "/papers/paper_1791890852932_4z9g58"
     },
@@ -616,7 +408,7 @@
       "message": "Completed analysis for \"PARKINSON’S DISEASE DETECTION FROM SPEECH...\"",
       "type": "success",
       "category": "discovery",
-      "read": false,
+      "read": true,
       "createdAt": "2026-10-13T11:25:33.591Z",
       "actionUrl": "/context?session=sess_1791890731139_70xy2o"
     },
@@ -627,7 +419,7 @@
       "message": "Discovered 5 verified academic papers on \"Medical AI & Brain MRI Tumor Segmentation\" from arXiv & OpenAlex.",
       "type": "info",
       "category": "discovery",
-      "read": false,
+      "read": true,
       "createdAt": "2026-10-13T11:21:34.637Z"
     },
     {
@@ -637,7 +429,7 @@
       "message": "Discovered 5 verified academic papers on \"Medical AI Tumor Segmentation\" from arXiv & OpenAlex.",
       "type": "info",
       "category": "discovery",
-      "read": false,
+      "read": true,
       "createdAt": "2026-10-13T11:21:22.588Z"
     },
     {
@@ -652,24 +444,5 @@
     }
   ],
   "subscriptions": [],
-  "revisions": [
-    {
-      "id": "rev_1791891454559_p3b2pc",
-      "originalText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
-      "revisedText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
-      "mode": "Formal Academic",
-      "explanation": "Enhanced for Formal Academic. Streamlined redundant phrasing, improved syntactic precision, and reinforced scholarly tone.",
-      "createdAt": "2026-10-13T11:37:34.559Z",
-      "accepted": false
-    },
-    {
-      "id": "rev_1791890824281_l4161h",
-      "originalText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
-      "revisedText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
-      "mode": "Natural Academic",
-      "explanation": "Enhanced for Natural Academic. Streamlined redundant phrasing, improved syntactic precision, and reinforced scholarly tone.",
-      "createdAt": "2026-10-13T11:27:04.281Z",
-      "accepted": false
-    }
-  ]
+  "revisions": []
 }
