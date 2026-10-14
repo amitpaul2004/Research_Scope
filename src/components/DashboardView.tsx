@@ -59,11 +59,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     totalSessions: sessions.length,
     totalGaps: gaps.length,
     bookmarkedGaps: gaps.filter(g => g.isBookmarked).length,
-    totalComparisons: 2,
+    totalComparisons: 0,
     totalAutomations: logs.length,
-    successfulAutomations: logs.length,
-    failedAutomations: 0,
-    automationHealthRate: 98,
+    successfulAutomations: logs.filter(l => l.status === 'completed').length,
+    failedAutomations: logs.filter(l => l.status === 'failed').length,
+    automationHealthRate: logs.length > 0
+      ? Math.round((logs.filter(l => l.status === 'completed').length / logs.length) * 100)
+      : 100,
   };
 
   return (

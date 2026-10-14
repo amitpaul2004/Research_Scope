@@ -14,6 +14,10 @@ import {
   Layers,
   ArrowUpRight,
   Code,
+  Trash2,
+  Sparkles,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 import { api } from '../api';
 import { N8nAutomationWorkflow, AutomationExecutionLog } from '../types';
@@ -27,14 +31,19 @@ export const N8nAutomationCenter: React.FC = () => {
     hasSecret: true,
   });
 
+  const [preferredEngine, setPreferredEngine] = useState<'local' | 'remote'>('local');
+
   const [loading, setLoading] = useState(false);
   const [triggeringKey, setTriggeringKey] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<AutomationExecutionLog | null>(null);
+  const [retryingLogId, setRetryingLogId] = useState<string | null>(null);
 
-  // Settings modal
+  // Settings modal & test connection
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [webhookUrlInput, setWebhookUrlInput] = useState('');
   const [secretInput, setSecretInput] = useState('');
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; status?: number; message: string; hint?: string } | null>(null);
 
   useEffect(() => {
     loadAutomationData();
@@ -51,42 +60,99 @@ export const N8nAutomationCenter: React.FC = () => {
       setConfig(wfRes.config);
       setWebhookUrlInput(wfRes.config.webhookBaseUrl || '');
       setLogs(logsRes.logs);
-      if (logsRes.logs.length > 0 && !selectedLog) {
-        setSelectedLog(logsRes.logs[0]);
+      if (logsRes.logs.length > 0) {
+        setSelectedLog(prev => prev ? logsRes.logs.find(l => l.id === prev.id) || logsRes.logs[0] : logsRes.logs[0]);
+      } else {
+        setSelectedLog(null);
       }
     } catch (err) {
-      console.error('Error loading automation data:', err);
+      console.warn('Error loading automation data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTrigger = async (workflowKey: string) => {
+  const handleTrigger = async (workflowKey: string, forceLocal?: boolean) => {
     setTriggeringKey(workflowKey);
+    const useLocal = forceLocal !== undefined ? forceLocal : (preferredEngine === 'local' || !config.enabled);
     try {
       const res = await api.triggerWorkflow(workflowKey, {
         triggeredManually: true,
         source: 'ResearchLens Automation Center UI',
+        forceLocal: useLocal,
       });
       setLogs([res.executionLog, ...logs]);
       setSelectedLog(res.executionLog);
-      // Reload workflow stats
       const wfRes = await api.getWorkflows();
       setWorkflows(wfRes.workflows);
     } catch (err) {
-      console.error('Trigger workflow failed:', err);
+      console.warn('Trigger workflow failed:', err);
     } finally {
       setTriggeringKey(null);
     }
   };
 
-  const handleRetry = async (logId: string) => {
+  const handleRetry = async (logId: string, forceLocal: boolean = false) => {
+    setRetryingLogId(logId);
     try {
-      const res = await api.retryExecutionLog(logId);
-      setLogs([res.executionLog, ...logs]);
+      const res = await api.retryExecutionLog(logId, forceLocal);
+      const updatedLogs = [res.executionLog, ...logs.filter(l => l.id !== res.executionLog.id && l.id !== logId)];
+      setLogs(updatedLogs);
       setSelectedLog(res.executionLog);
+      const wfRes = await api.getWorkflows();
+      setWorkflows(wfRes.workflows);
     } catch (err) {
-      console.error('Retry failed:', err);
+      console.warn('Retry failed:', err);
+    } finally {
+      setRetryingLogId(null);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Optimistic removal so log disappears instantly
+    const remaining = logs.filter(l => l.id !== logId);
+    setLogs(remaining);
+    if (selectedLog?.id === logId) {
+      setSelectedLog(remaining[0] || null);
+    }
+    try {
+      await api.deleteAutomationLog(logId);
+    } catch (err) {
+      console.warn('Delete log failed:', err);
+    }
+  };
+
+  const handleClearFailedLogs = async () => {
+    // Optimistic removal of all failed logs
+    const remaining = logs.filter(l => l.status !== 'failed');
+    setLogs(remaining);
+    if (selectedLog?.status === 'failed') {
+      setSelectedLog(remaining[0] || null);
+    }
+    try {
+      await api.clearFailedAutomationLogs();
+    } catch (err) {
+      console.warn('Clear failed logs failed:', err);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    setTestResult(null);
+    try {
+      const res = await api.testN8nConnection(webhookUrlInput);
+      setTestResult(res);
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err?.message || 'Connection test failed',
+      });
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -111,7 +177,7 @@ export const N8nAutomationCenter: React.FC = () => {
       setConfig(res.config);
       setShowSettingsModal(false);
     } catch (err) {
-      console.error('Update config failed:', err);
+      console.warn('Update config failed:', err);
     }
   };
 
@@ -132,21 +198,40 @@ export const N8nAutomationCenter: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {/* Status badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>
-              {config.enabled ? 'n8n Live Webhooks Active' : 'Local Fallback Engine Active'}
-            </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Dual Engine Selector */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => setPreferredEngine('local')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                preferredEngine === 'local'
+                  ? 'bg-emerald-600/25 border border-emerald-500/50 text-emerald-300 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Execute workflows locally with zero dependencies"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Local Engine (Reliable)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreferredEngine('remote')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                preferredEngine === 'remote'
+                  ? 'bg-indigo-600/25 border border-indigo-500/50 text-indigo-300 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Dispatch to external n8n webhook instance"
+            >
+              <Workflow className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Remote n8n Webhook</span>
+            </button>
           </div>
 
           <button
             onClick={() => setShowSettingsModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>Connection Settings</span>
@@ -246,18 +331,29 @@ export const N8nAutomationCenter: React.FC = () => {
               <Activity className="w-4 h-4 text-emerald-400" />
               Live Execution &amp; Dead-Letter Queue Logs ({logs.length})
             </h3>
-            <button
-              onClick={loadAutomationData}
-              className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              {logs.some(l => l.status === 'failed') && (
+                <button
+                  onClick={handleClearFailedLogs}
+                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 px-2 py-1 rounded bg-rose-950/40 border border-rose-900/50 hover:bg-rose-900/40 transition-colors cursor-pointer"
+                  title="Clear all failed jobs from queue"
+                >
+                  <Trash2 className="w-3 h-3" /> Clear Failed
+                </button>
+              )}
+              <button
+                onClick={loadAutomationData}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-1 rounded bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" /> Refresh
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {logs.length === 0 ? (
               <p className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-                No logs recorded yet.
+                No logs recorded yet. Click "Test Run" above to execute any workflow.
               </p>
             ) : (
               logs.map((log) => {
@@ -266,7 +362,7 @@ export const N8nAutomationCenter: React.FC = () => {
                   <div
                     key={log.id}
                     onClick={() => setSelectedLog(log)}
-                    className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
+                    className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all group ${
                       isSelected
                         ? 'bg-rose-950/20 border-rose-500/40 shadow-sm'
                         : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
@@ -275,7 +371,7 @@ export const N8nAutomationCenter: React.FC = () => {
                     <div className="flex-1 truncate pr-2">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`w-2 h-2 rounded-full ${
+                          className={`w-2 h-2 rounded-full shrink-0 ${
                             log.status === 'completed'
                               ? 'bg-emerald-400'
                               : log.status === 'failed'
@@ -285,12 +381,12 @@ export const N8nAutomationCenter: React.FC = () => {
                         />
                         <span className="font-semibold text-slate-200 truncate">{log.workflowName}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      <span className="text-[10px] text-slate-500 mt-0.5 block truncate">
                         Job: {log.jobId} • {log.executionMode} • {new Date(log.startedAt).toLocaleTimeString()}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
                           log.status === 'completed'
@@ -300,8 +396,16 @@ export const N8nAutomationCenter: React.FC = () => {
                             : 'bg-amber-950 text-amber-300 border border-amber-800'
                         }`}
                       >
-                        {log.status}
+                        {log.executionMode === 'fallback_recovery' ? 'Recovered' : log.status}
                       </span>
+
+                      <button
+                        onClick={(e) => handleDeleteLog(log.id, e)}
+                        className="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                        title="Remove log from queue"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -316,14 +420,23 @@ export const N8nAutomationCenter: React.FC = () => {
             <h3 className="text-xs font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center justify-between">
               <span>Log Payload Inspector</span>
               {selectedLog && (
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {selectedLog.jobId}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {selectedLog.jobId}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteLog(selectedLog.id)}
+                    className="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Delete this log"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               )}
             </h3>
 
             {selectedLog ? (
-              <div className="space-y-3 text-xs">
+              <div className="space-y-3.5 text-xs">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-500">Workflow:</span>
                   <div className="font-semibold text-white mt-0.5">{selectedLog.workflowName}</div>
@@ -340,6 +453,22 @@ export const N8nAutomationCenter: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Error Diagnostic Card if Failed or Notice */}
+                {selectedLog.errorMessage && (
+                  <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-800/60 text-rose-200 space-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Diagnostics / Webhook Response</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed break-words font-mono bg-black/30 p-2 rounded border border-rose-900/40 text-rose-200">
+                      {selectedLog.errorMessage}
+                    </p>
+                    <div className="text-[10px] text-rose-300/80 leading-normal pt-0.5">
+                      💡 <strong>Actionable Guidance:</strong> If using n8n cloud or remote webhook, ensure the workflow is toggled to <strong>Active</strong> in the n8n editor, or click <em>Execute via Local Engine</em> below to run autonomously.
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-500">Input Payload:</span>
                   <pre className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-300 overflow-x-auto max-h-28">
@@ -350,20 +479,37 @@ export const N8nAutomationCenter: React.FC = () => {
                 {selectedLog.outputResult && (
                   <div>
                     <span className="text-[10px] font-bold uppercase text-slate-500">Output Result:</span>
-                    <pre className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-300 overflow-x-auto max-h-28">
+                    <pre className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-300 overflow-x-auto max-h-36">
                       {JSON.stringify(selectedLog.outputResult, null, 2)}
                     </pre>
                   </div>
                 )}
 
+                {/* Recovery Actions for Failed or Dead-Letter Jobs */}
                 {selectedLog.status === 'failed' && (
-                  <button
-                    onClick={() => handleRetry(selectedLog.id)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Retry Failed Job (Dead-Letter Handling)</span>
-                  </button>
+                  <div className="pt-1 space-y-2">
+                    <button
+                      onClick={() => handleRetry(selectedLog.id, true)}
+                      disabled={retryingLogId === selectedLog.id}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-60 shadow-lg shadow-emerald-950/40"
+                    >
+                      {retryingLogId === selectedLog.id ? (
+                        <div className="w-3.5 h-3.5 rounded-full border border-white border-t-transparent animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                      <span>Execute via Local Autonomous Engine (Immediate Recovery)</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleRetry(selectedLog.id, false)}
+                      disabled={retryingLogId === selectedLog.id}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Retry via Remote n8n Webhook</span>
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
@@ -385,22 +531,62 @@ export const N8nAutomationCenter: React.FC = () => {
             </h3>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Connect your self-hosted or cloud n8n deployment. When configured, events will dispatch directly to your n8n webhooks with authenticated bearer tokens. When left empty, ResearchLens uses the built-in local fallback runner.
+              Connect your self-hosted or cloud n8n deployment. When configured and active, events dispatch directly to your n8n webhooks. When left empty or inactive, ResearchLens uses the built-in local autonomous engine.
             </p>
 
             <form onSubmit={handleSaveConfig} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-300 font-medium mb-1">
-                  n8n Webhook Base URL
+                  n8n Webhook URL
                 </label>
-                <input
-                  type="url"
-                  value={webhookUrlInput}
-                  onChange={(e) => setWebhookUrlInput(e.target.value)}
-                  placeholder="https://your-n8n-instance.com"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={webhookUrlInput}
+                    onChange={(e) => setWebhookUrlInput(e.target.value)}
+                    placeholder="https://your-n8n-instance.com/webhook/..."
+                    className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-[11px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={testingConnection || !webhookUrlInput.trim()}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 shrink-0 flex items-center gap-1.5"
+                  >
+                    {testingConnection ? (
+                      <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                    ) : (
+                      <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                    )}
+                    <span>Test Connection</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Test Result Feedback */}
+              {testResult && (
+                <div
+                  className={`p-3 rounded-xl border text-xs space-y-1 ${
+                    testResult.success
+                      ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+                      : 'bg-rose-950/40 border-rose-800 text-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                    )}
+                    <span>{testResult.message}</span>
+                  </div>
+                  {testResult.hint && (
+                    <p className="text-[11px] text-slate-300/90 pl-5">
+                      💡 {testResult.hint}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-300 font-medium mb-1">
@@ -411,27 +597,40 @@ export const N8nAutomationCenter: React.FC = () => {
                   value={secretInput}
                   onChange={(e) => setSecretInput(e.target.value)}
                   placeholder="researchlens_n8n_secret_token_2026"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-[11px]"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
                   Passed in 'X-ResearchLens-Secret' header to authorize both inbound and outbound triggers.
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowSettingsModal(false)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                  onClick={() => {
+                    setWebhookUrlInput('');
+                    setConfig({ ...config, enabled: false, webhookBaseUrl: '' });
+                  }}
+                  className="text-slate-400 hover:text-slate-200 text-xs underline cursor-pointer"
                 >
-                  Cancel
+                  Clear &amp; Use Local Engine
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
-                >
-                  Save Configuration
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors cursor-pointer"
+                  >
+                    Save Configuration
+                  </button>
+                </div>
               </div>
             </form>
           </div>

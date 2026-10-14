@@ -163,6 +163,103 @@ The JSON must follow this structure:
   return generateAutonomousResearchReport(params);
 }
 
+export function extractCleanTitle(raw: string): string {
+  if (!raw) return 'Academic Research Topic';
+  const trimmed = raw.trim();
+  const lines = trimmed.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+  
+  if (lines.length <= 1) {
+    if (trimmed.length > 100) return trimmed.slice(0, 95) + '...';
+    return trimmed;
+  }
+
+  // Look for high-confidence title lines
+  for (const line of lines.slice(0, 12)) {
+    const lower = line.toLowerCase();
+    if (
+      lower.includes('project report') ||
+      lower.includes('department of') ||
+      lower.includes('bachelor of') ||
+      lower.includes('prepared by') ||
+      lower.includes('name:') ||
+      lower.includes('roll no') ||
+      lower.includes('under the guidance') ||
+      lower.includes('academic session') ||
+      lower.includes('certificate') ||
+      lower.includes('abstract') ||
+      lower.includes('acknowledgement') ||
+      lower.includes('table of contents') ||
+      lower.startsWith('submitted')
+    ) {
+      continue;
+    }
+    const cleaned = line.replace(/^(title|topic|subject)[:\s—\-]+/i, '').trim();
+    if (cleaned.length >= 8 && cleaned.length <= 120) {
+      return cleaned;
+    }
+  }
+
+  const fallback = lines[0] || trimmed;
+  return fallback.length > 100 ? fallback.slice(0, 95) + '...' : fallback;
+}
+
+function extractContentEntities(text: string, domain: string) {
+  const lower = text.toLowerCase();
+  
+  // Detect models / architectures
+  const models: string[] = [];
+  if (lower.includes('multilayer perceptron') || lower.includes('mlp')) models.push('Multilayer Perceptron (MLP)');
+  if (lower.includes('cnn') || lower.includes('convolutional')) models.push('Convolutional Neural Networks (CNN)');
+  if (lower.includes('transformer') || lower.includes('attention')) models.push('Transformer & Attention Architectures');
+  if (lower.includes('svm') || lower.includes('support vector')) models.push('Support Vector Machines (SVM)');
+  if (lower.includes('random forest')) models.push('Random Forests');
+  if (lower.includes('rnn') || lower.includes('lstm') || lower.includes('gru')) models.push('Recurrent / Temporal Networks (LSTM/GRU)');
+  if (lower.includes('xgboost')) models.push('Gradient Boosted Trees (XGBoost)');
+  if (models.length === 0) models.push('Deep Neural Network Architectures', 'Classical Statistical Baselines');
+
+  // Detect modalities / features
+  const features: string[] = [];
+  if (lower.includes('speech') || lower.includes('acoustic') || lower.includes('voice') || lower.includes('parkinson')) {
+    features.push('Speech Acoustic Measurements', 'Pitch Instability & Frequency Modulation', 'Jitter & Shimmer Perturbations', 'Harmonics-to-Noise Ratio (HNR)');
+  } else if (lower.includes('image') || lower.includes('vision')) {
+    features.push('Spatial Visual Feature Maps', 'Convolutional Embeddings', 'Multi-Scale Receptive Fields');
+  } else if (lower.includes('text') || lower.includes('nlp')) {
+    features.push('Token Embeddings', 'Contextual Semantic Vectors', 'Cross-Attention Representations');
+  } else {
+    features.push('High-Dimensional Feature Representations', 'Multi-Modal Covariates', 'Normalized Parameter Vectors');
+  }
+
+  // Detect datasets
+  const datasets: string[] = [];
+  if (lower.includes('oxford')) datasets.push("Oxford Parkinson's Disease Detection Dataset");
+  if (lower.includes('uci')) datasets.push('UCI Machine Learning Repository');
+  if (datasets.length === 0) datasets.push('Standard Academic Literature Benchmarks');
+
+  // Detect specific challenges
+  const challenges: string[] = [];
+  if (lower.includes('leakage') || lower.includes('subject-level') || lower.includes('participant-level') || lower.includes('replicated')) {
+    challenges.push('Participant-level data leakage from repeated subject recordings across train-test splits');
+  }
+  if (lower.includes('small sample') || lower.includes('small dataset') || lower.includes('cohort')) {
+    challenges.push('Constrained participant cohort size increasing susceptibility to overfitting');
+  }
+  if (lower.includes('recording variability') || lower.includes('noise') || lower.includes('microphone')) {
+    challenges.push('Acoustic, environmental, and recording-hardware variability across acquisition setups');
+  }
+  if (lower.includes('clinical') || lower.includes('diagnostic')) {
+    challenges.push('Translational gap between academic classification benchmarks and real-world clinical decision-making');
+  }
+  if (challenges.length === 0) {
+    challenges.push(
+      'Distribution shift and out-of-distribution generalizability across diverse subject cohorts',
+      'Benchmark reproducibility and subtle data leakage during cross-validation',
+      'Interpretability bottlenecks hindering trust among domain specialists'
+    );
+  }
+
+  return { models, features, datasets, challenges };
+}
+
 /**
  * Autonomous Research Report Generator using Real Retrieved Literature
  */
@@ -175,109 +272,106 @@ function generateAutonomousResearchReport(params: {
   responseStyle?: string;
   retrievedPapers?: Array<{ title: string; authors: string[]; year: number; abstract: string; url?: string; doi?: string }>;
 }) {
-  const topic = params.topicOrQuestion.trim();
-  const domain = params.academicDomain || 'Computational Science & Machine Learning';
+  const rawInput = params.topicOrQuestion.trim();
+  const cleanTitle = extractCleanTitle(rawInput);
+  const domain = params.academicDomain || 'Computer Science & AI';
   const papers = params.retrievedPapers || [];
 
-  // Extract key terms
-  const words = topic.split(/\s+/).filter(w => w.length > 3 && !['what', 'with', 'from', 'this', 'that', 'using', 'into', 'have', 'about'].includes(w.toLowerCase()));
-  const focusTerm1 = words[0] || 'Machine Learning';
-  const focusTerm2 = words[1] || 'Detection';
-  const focusTerm3 = words[words.length - 1] || 'Modeling';
+  const entities = extractContentEntities(`${rawInput} ${params.additionalContext || ''}`, domain);
+
+  const primaryModel = entities.models[0] || 'Neural Network';
+  const secondaryModel = entities.models[1] || 'Baseline Classifiers';
+  const primaryFeature = entities.features[0] || 'Feature Embeddings';
+  const primaryDataset = entities.datasets[0] || 'Public Benchmarks';
 
   const relatedPapers = papers.map(p => ({
     title: p.title,
     authors: p.authors.length > 0 ? p.authors : ['Academic Authors'],
     year: p.year || 2024,
-    source: p.url?.includes('arxiv') ? 'arXiv.org' : 'Academic Index',
+    source: p.url?.includes('arxiv') ? 'arXiv.org' : 'OpenAlex Index',
     url: p.url || `https://doi.org/${p.doi || ''}`,
     abstractExcerpt: p.abstract ? p.abstract.slice(0, 220) + '...' : 'Peer-reviewed investigation into related methodologies.',
     relevanceReason: `Provides direct empirical baseline and methodology in ${domain}.`,
   }));
 
   return {
-    topicOverview: `This research investigation addresses "${topic}". Within ${domain}, understanding the underlying theoretical formulations, data representations, and operational constraints is essential for designing resilient computational solutions. Recent academic research indicates that bridging the gap between theoretical models and real-world deployment requires rigorous evaluation against non-stationary distributions, multi-modal features, and hardware limits.`,
+    topicOverview: `This research investigation addresses "${cleanTitle}". Within ${domain}, understanding theoretical formulations, signal representations, and operational constraints is essential for designing resilient computational solutions. Recent academic research indicates that bridging the gap between theoretical architectures and real-world deployment requires rigorous evaluation against non-stationary distributions, multi-modal features, and hardware limits.`,
     keyConcepts: [
       {
-        concept: `${focusTerm1} Formulation`,
-        explanation: `Mathematical and algorithmic representation governing feature extraction and representation learning in ${domain}.`,
+        concept: `${primaryModel} Pipeline`,
+        explanation: `Computational learning architecture tailored for feature extraction, representation learning, and predictive inference in ${domain}.`,
       },
       {
-        concept: `${focusTerm2} Paradigms`,
-        explanation: `Computational frameworks utilized to distinguish salient target signals from environmental or physiological noise.`,
+        concept: `${primaryFeature}`,
+        explanation: `Parametric representations capturing salient target signals while filtering out ambient noise or physiological variation.`,
       },
       {
-        concept: `${focusTerm3} Generalization`,
-        explanation: `Capacity of learned models to retain high sensitivity and specificity across out-of-distribution subject cohorts.`,
+        concept: 'Leakage-Aware Evaluation',
+        explanation: `Partitioning strategy (such as Leave-One-Subject-Out or participant-level splitting) preventing overly optimistic performance estimates from repeated observations.`,
       },
       {
-        concept: 'Feature Space Representation',
-        explanation: 'Multi-dimensional embedding techniques capturing nuanced acoustic, temporal, or spatial markers.',
+        concept: 'Cross-Validation & Regularization',
+        explanation: 'Regularization strategies (e.g. dropout, early stopping, and weight decay) preventing overparameterized models from memorizing small cohort datasets.',
       },
     ],
-    researchBackground: `Historically, inquiries into ${topic.toLowerCase()} relied primarily on hand-crafted heuristics and statistical feature engineering. The emergence of deep neural architectures, self-supervised representation learning, and multi-modal fusion has drastically improved baseline performance. However, critical challenges persist regarding cohort bias, dataset scarcity, interpretability, and robustness in real-world environments.`,
+    researchBackground: `Historically, inquiries into ${cleanTitle.toLowerCase()} relied heavily on hand-crafted heuristics and statistical feature engineering. The emergence of modern neural architectures, self-supervised representations, and automated feature extractors has substantially boosted classification benchmarks. However, critical challenges persist regarding cohort diversity, recording consistency, interpretability, and robustness in real-world environments.`,
     existingApproaches: [
       {
-        approach: 'Classical Statistical & Heuristic Baselines',
-        pros: 'Highly interpretable, computationally lightweight, transparent decision boundaries.',
-        cons: 'Limited capacity to capture high-order non-linear interactions across diverse cohorts.',
+        approach: `Classical Classifiers (${secondaryModel})`,
+        pros: 'Highly interpretable, computationally lightweight, transparent decision boundaries on small sample sizes.',
+        cons: 'Limited capacity to capture high-order non-linear interactions across diverse subject cohorts.',
       },
       {
-        approach: 'Deep End-to-End Neural Architectures',
-        pros: 'Automated representation learning from raw signals without requiring manual feature engineering.',
-        cons: 'Susceptible to overfitting on small cohorts, high compute requirements, opacity in clinical or field settings.',
+        approach: `Dense Deep Neural Architectures (${primaryModel})`,
+        pros: 'Automated non-linear representation learning from standardized feature matrices without manual rule authoring.',
+        cons: 'Susceptible to overfitting on small participant cohorts; requires rigorous regularization and early stopping.',
       },
       {
-        approach: 'Hybrid & Self-Supervised Multi-Modal Models',
-        pros: 'Leverages vast unlabeled recordings for pre-training, fine-tunes on smaller specialized datasets.',
-        cons: 'High training complexity and sensitive to domain shift across different acquisition devices.',
+        approach: 'Hybrid & Multi-Modal Feature Models',
+        pros: 'Combines pre-extracted domain biomarkers with learned continuous representations for balanced sensitivity.',
+        cons: 'Higher architectural complexity and increased sensitivity to missing or corrupted sensor channels.',
       },
     ],
-    methodologyAnalysis: `The standard methodological pipeline consists of signal acquisition, artifact filtering, representation learning (e.g., convolutional embeddings, attention-based temporal transformers), followed by probabilistic classification or regression heads. Special care is required for cross-validation schemes (e.g., Leave-One-Subject-Out) to prevent subtle data leakage between training and evaluation splits.`,
-    currentChallenges: [
-      'Data scarcity and demographic imbalance across public training benchmarks',
-      'Acoustic and sensor variability across varying recording hardware and ambient environments',
-      'Lack of unified standardized evaluation protocols leading to inflated benchmark metrics',
-      'Interpretability bottlenecks hindering trust among domain specialists and clinicians',
-    ],
+    methodologyAnalysis: `The standard methodological pipeline consists of signal acquisition, artifact filtering, feature standardization (e.g. z-score scaling fitted strictly on training partitions), followed by ${primaryModel} training. Special care is required for validation schemes to ensure all recordings from a given participant remain exclusively in either the train or test set, preventing subtle data leakage.`,
+    currentChallenges: entities.challenges,
     potentialResearchGaps: [
       {
-        title: `Robust Few-Shot Domain Adaptation for ${focusTerm1}`,
-        description: 'Existing models degrade significantly when evaluated on hardware or cohorts differing from the training distribution. Lack of lightweight unsupervised calibration frameworks.',
+        title: `Leakage-Resilient Subject-Level Validation for ${cleanTitle}`,
+        description: `Many benchmark studies evaluate ${primaryModel} models with row-level shuffling, artificially inflating accuracy by allowing repeated participant recordings to span train and test sets.`,
         gapType: 'methodological' as const,
         urgency: 'High' as const,
       },
       {
-        title: 'Unified Cross-Benchmark Evaluation Protocol',
-        description: 'Studies often report high accuracy on isolated single-center datasets but fail to validate on multi-center prospective cohorts with realistic noise.',
+        title: `Cross-Device Hardware Robustness on ${primaryDataset}`,
+        description: 'Existing models degrade significantly when evaluated on hardware or cohorts differing from the training distribution. Lack of lightweight unsupervised calibration frameworks.',
         gapType: 'dataset' as const,
         urgency: 'High' as const,
       },
       {
         title: 'Interpretable Biomarker Attribution Networks',
-        description: 'Black-box neural networks lack transparent feature attribution explaining which exact temporal/spectral segments drove the classification.',
+        description: 'Black-box neural networks lack transparent feature attribution explaining which exact feature parameters or temporal segments drove the classification decision.',
         gapType: 'theoretical' as const,
         urgency: 'Medium' as const,
       },
     ],
     researchQuestions: [
-      `How do modern attention-based architectures compare to lightweight spectral convolutional networks in low-resource settings?`,
+      `How does ${primaryModel} performance compare to ${secondaryModel} under strict participant-isolated cross-validation?`,
       `What data augmentation and contrastive learning techniques best mitigate device-specific recording bias?`,
-      `Can self-supervised pre-training on general acoustic datasets transfer effectively to specialized ${domain} tasks?`,
+      `Can self-supervised pre-training transfer effectively to specialized ${domain} tasks with small cohort benchmarks?`,
     ],
     potentialContributions: [
-      `A standardized open-source evaluation benchmark with strict subject isolation to prevent data leakage.`,
-      `An interpretable multi-modal architecture with attention saliency maps verified by domain experts.`,
+      `A reproducible benchmark pipeline with strict subject isolation to prevent optimistic data leakage.`,
+      `A lightweight regularized architecture with post-hoc feature attribution verified by domain specialists.`,
       `Empirical comparative analysis evaluating trade-offs between model complexity, latency, and out-of-distribution robustness.`,
     ],
     recommendedMethodologies: [
-      'Employ Leave-One-Subject-Out (LOSO) cross-validation to guarantee strict subject partition.',
-      'Incorporate contrastive pre-training to learn device-invariant latent representations.',
-      'Deploy SHAP or Integrated Gradients for rigorous post-hoc feature attribution.',
+      'Employ Leave-One-Subject-Out (LOSO) cross-validation to guarantee strict participant partition.',
+      'Apply standard scaling derived solely from training folds to avoid lookahead contamination.',
+      'Deploy SHAP or permutation importance for rigorous post-hoc biomarker attribution.',
     ],
     relatedResearchPapers: relatedPapers.length > 0 ? relatedPapers : [
       {
-        title: `Recent Advances and Methodological Frontiers in ${topic}`,
+        title: `Recent Advances and Methodological Frontiers in ${cleanTitle}`,
         authors: ['Research Community'],
         year: 2024,
         source: 'IEEE / ACM Proceedings',
@@ -292,15 +386,15 @@ function generateAutonomousResearchReport(params: {
     ],
     verifiedVsHypotheses: {
       verifiedFacts: [
-        'Data leakage from improper train-test partitioning frequently yields over-optimistic validation accuracy in academic literature.',
-        'Acoustic and environmental sensor variability introduces non-trivial distribution shift across recording locations.',
+        'Data leakage from improper train-test partitioning frequently yields over-optimistic validation accuracy in published literature.',
+        'Acoustic and environmental sensor variability introduces non-trivial distribution shift across recording devices.',
       ],
       aiInterpretations: [
-        'Self-supervised representation learning can likely bridge demographic variance better than pure supervised models.',
-        'Hybrid architectures combining spectral priors with temporal transformers offer an optimal trade-off between parameter efficiency and accuracy.',
+        'Self-supervised representation learning can likely bridge demographic variance better than purely supervised shallow baselines.',
+        'Compact regularized neural architectures offer an optimal trade-off between parameter efficiency and accuracy on small tabular biomedical datasets.',
       ],
       untestedHypotheses: [
-        'Device-invariant contrastive regularization can reduce cross-sensor performance drops below 5%.',
+        'Device-invariant contrastive regularization can reduce cross-sensor performance drops below 5% without requiring labelled target calibration.',
       ],
     },
     generatedAt: new Date().toISOString(),
@@ -316,12 +410,13 @@ export async function askContextFollowUp(params: {
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   userQuestion: string;
 }) {
+  const cleanTitle = extractCleanTitle(params.topicOrQuestion);
   const client = getAiClient();
   if (client) {
     const conversation = params.history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n');
     const prompt = `
 You are the ResearchLens AI Research Advisor.
-The researcher is exploring: "${params.topicOrQuestion}".
+The researcher is exploring: "${cleanTitle}".
 Initial Research Summary:
 ${params.reportSummary}
 
@@ -349,7 +444,7 @@ Provide an insightful, rigorous, and actionable response.
   // Autonomous conversational research advisor fallback
   const qLower = params.userQuestion.toLowerCase();
   if (qLower.includes('simpler') || qLower.includes('simple') || qLower.includes('explain')) {
-    return `In simple terms: Researchers are using computers to automatically recognize subtle patterns in data related to "${params.topicOrQuestion}".
+    return `In simple terms: Researchers are using computers to automatically recognize subtle patterns in data related to "${cleanTitle}".
 
 Instead of relying solely on subjective human observation, machine learning algorithms examine measurements (like acoustic frequencies, timing, or sensor telemetry) to find signatures that humans might miss. 
 
@@ -357,23 +452,23 @@ The biggest real-world challenge is that real-life signals are noisy, and record
   }
 
   if (qLower.includes('model') || qLower.includes('architecture') || qLower.includes('algorithm')) {
-    return `For "${params.topicOrQuestion}", the most effective candidate architectures include:
+    return `For "${cleanTitle}", the most effective candidate architectures include:
 
-1. **Convolutional Neural Networks (1D/2D CNNs) with Log-Mel Spectrograms**: Excellent for extracting localized spectral-temporal patterns while remaining computationally efficient.
-2. **Temporal Convolutional Networks (TCNs) or Dilated Convolutions**: Provide extensive receptive fields with stable gradients, outperforming standard recurrent networks on sequential data.
-3. **Transformer-based Self-Attention with Positional Encodings**: Optimal for capturing long-range contextual relationships, especially when pre-trained on large self-supervised datasets.
-4. **Ensemble Support Vector Machines (SVM) & XGBoost with Hand-Crafted Acoustic Features**: Crucial baseline to benchmark whether deep models genuinely outperform traditional feature extractors (like jitter, shimmer, HNR, and MFCCs).`;
+1. **Multilayer Perceptron (MLP) with Dropout Regularization**: Well-suited for pre-extracted tabular features (e.g., pitch, jitter, shimmer, HNR) without the computational overhead of raw waveform processing.
+2. **Convolutional Neural Networks (1D/2D CNNs) with Log-Mel Spectrograms**: Excellent for extracting localized spectral-temporal patterns directly from time-frequency representations.
+3. **Temporal Convolutional Networks (TCNs) or Dilated Convolutions**: Provide extensive receptive fields with stable gradients, outperforming standard recurrent networks on sequential signals.
+4. **Ensemble Support Vector Machines (SVM) & XGBoost**: Crucial baselines to benchmark whether deep models genuinely outperform classical feature extractors under identical data splits.`;
   }
 
   if (qLower.includes('dataset') || qLower.includes('data') || qLower.includes('benchmark')) {
-    return `When working on "${params.topicOrQuestion}", keep these data considerations in mind:
+    return `When working on "${cleanTitle}", keep these data considerations in mind:
 
 - **Partitioning Strategy**: Always implement Leave-One-Subject-Out (LOSO) cross-validation. Never split multiple recordings of the same individual across training and test sets, as this causes severe data leakage.
-- **Demographic & Device Balance**: Ensure the benchmark includes recordings from multiple devices, age groups, and acoustic settings.
+- **Demographic & Device Balance**: Ensure the benchmark includes recordings from multiple devices, age cohorts, and acoustic environments.
 - **Noise Augmentation**: Augment training data with synthetic background acoustic noise, room impulse responses (RIR), and microphone frequency distortions to test resilience.`;
   }
 
-  return `Regarding "${params.userQuestion}" for your research in "${params.topicOrQuestion}":
+  return `Regarding "${params.userQuestion}" for your research in "${cleanTitle}":
 
 Key considerations for your research design:
 1. **Methodological Rigor**: Establish clear baseline benchmarks before introducing novel complex architectures.

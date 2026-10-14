@@ -63,18 +63,49 @@ router.post('/upload', upload.array('papers', 5), async (req, res) => {
       const paperId = `paper_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       // Infer or extract title
-      let paperTitle = pdfData.metadata?.title || file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
-      // If title looks like generic PDF metadata, use first line of text
-      const firstLine = pdfData.text.split('\n').map(l => l.trim()).find(l => l.length > 10 && l.length < 150);
-      if (firstLine && (!pdfData.metadata?.title || pdfData.metadata.title.length < 5)) {
-        paperTitle = firstLine;
+      const rawFallbackName = file.originalname.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+      let paperTitle = pdfData.metadata?.title || rawFallbackName;
+      
+      // If metadata title is missing or suspicious, inspect first lines
+      const textLines = pdfData.text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+      if (!pdfData.metadata?.title || pdfData.metadata.title.length < 5 || paperTitle.startsWith('<') || paperTitle.includes('/Type')) {
+        if (textLines.length > 0) {
+          // Combine first 2 lines if first line is a title fragment
+          const candidate1 = textLines[0];
+          const candidate2 = textLines[1] || '';
+          if (candidate1 && candidate1.length < 90 && !candidate1.includes('@') && !candidate1.includes('http')) {
+            if (candidate2 && candidate2.length < 90 && !candidate2.includes('@') && !candidate2.includes(',') && !candidate2.includes('University')) {
+              paperTitle = `${candidate1} ${candidate2}`;
+            } else {
+              paperTitle = candidate1;
+            }
+          }
+        }
+      }
+
+      // Final sanitization of paperTitle
+      if (!paperTitle || paperTitle.startsWith('<') || paperTitle.includes('/Type') || paperTitle.includes('endobj')) {
+        paperTitle = rawFallbackName;
+      }
+
+      // Infer authors
+      let authors = pdfData.metadata?.author ? [pdfData.metadata.author] : [];
+      if (authors.length === 0 && textLines.length > 1) {
+        // Look for author list line (often line 2 or 3, containing commas or 'and')
+        const authorLine = textLines.slice(1, 4).find(l => (l.includes(',') || l.includes(' and ')) && !l.includes('Abstract') && !l.includes('Introduction') && l.length < 150);
+        if (authorLine) {
+          authors = authorLine.split(/,| and /).map(a => a.trim()).filter(a => a.length > 2 && a.length < 40);
+        }
+      }
+      if (authors.length === 0) {
+        authors = ['Academic Authors'];
       }
 
       const newPaper: ResearchPaper = {
         id: paperId,
         userId: user.id,
         title: paperTitle,
-        authors: pdfData.metadata?.author ? [pdfData.metadata.author] : ['Unspecified Academic Authors'],
+        authors,
         fileHash,
         fileName: file.originalname,
         fileSize: file.size,

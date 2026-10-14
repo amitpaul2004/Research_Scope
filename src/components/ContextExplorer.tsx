@@ -38,7 +38,7 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
   const [additionalContext, setAdditionalContext] = useState('');
   const [researchObjective, setResearchObjective] = useState('');
   const [academicDomain, setAcademicDomain] = useState('Computer Science & AI');
-  const [depth, setDepth] = useState<'Quick Overview' | 'Standard Analysis' | 'In-Depth Analysis'>('Standard Analysis');
+  const [depth, setDepth] = useState<'Quick Overview' | 'Standard Analysis' | 'In-Depth Analysis'>('In-Depth Analysis');
   const [responseStyle, setResponseStyle] = useState<'Academic & Formal' | 'Executive & Concise' | 'Comprehensive & Methodological'>('Academic & Formal');
 
   // Execution & Sessions
@@ -64,11 +64,13 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
     try {
       const res = await api.getContextSessions();
       setSessions(res.sessions);
-      if (res.sessions.length > 0 && !activeSession) {
-        setActiveSession(res.sessions[0]);
+      if (res.sessions.length > 0) {
+        setActiveSession(prev => prev || res.sessions[0]);
+      } else {
+        setActiveSession(null);
       }
     } catch (err) {
-      console.error('Failed to load context sessions:', err);
+      console.warn('Failed to load context sessions:', err);
     }
   };
 
@@ -123,12 +125,7 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
     } catch (err: any) {
       clearInterval(timer);
       setLoading(false);
-      const rawMsg = err?.message || 'Failed to analyze research context. Please try again.';
-      if (rawMsg.includes('leaked') || rawMsg.includes('API key') || rawMsg.includes('403') || rawMsg.includes('PERMISSION_DENIED')) {
-        setErrorMessage('Notice: The configured Gemini API key was reported as expired or restricted. The system is falling back to automated academic literature synthesis (arXiv & OpenAlex). Please re-submit or refresh your key in the AI Studio Secrets panel.');
-      } else {
-        setErrorMessage(rawMsg);
-      }
+      setErrorMessage(err?.message || 'Unable to complete research analysis. Please try again.');
     }
   };
 
@@ -153,18 +150,21 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
     }
   };
 
-  const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this research session?')) return;
+  const handleDeleteSession = async (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Optimistic UI update so card disappears immediately
+    const remaining = sessions.filter(s => s.id !== id);
+    setSessions(remaining);
+    if (activeSession?.id === id) {
+      setActiveSession(remaining[0] || null);
+    }
     try {
       await api.deleteContextSession(id);
-      const remaining = sessions.filter(s => s.id !== id);
-      setSessions(remaining);
-      if (activeSession?.id === id) {
-        setActiveSession(remaining[0] || null);
-      }
     } catch (err) {
-      console.error('Delete session failed:', err);
+      console.warn('Delete session failed:', err);
     }
   };
 
@@ -402,11 +402,12 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
                         </div>
                       </div>
                       <button
+                        type="button"
                         onClick={(e) => handleDeleteSession(sess.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition-opacity"
+                        className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 p-2 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
                         title="Delete session"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4 text-rose-400/80 hover:text-rose-400" />
                       </button>
                     </div>
                   );
@@ -440,14 +441,26 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
                     </h2>
                   </div>
 
-                  <button
-                    onClick={() => onExport('session', activeSession.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors shrink-0"
-                    title="Export report as Markdown"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onExport('session', activeSession.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer"
+                      title="Export report as Markdown"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSession(activeSession.id, e)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-300 text-xs font-medium transition-colors cursor-pointer"
+                      title="Delete this session"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Sub-Tabs */}

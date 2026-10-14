@@ -2,7 +2,8 @@ import crypto from 'crypto';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+const pdfParseMod = require('pdf-parse');
+const PDFParse = pdfParseMod.PDFParse || pdfParseMod.default || pdfParseMod;
 
 export interface ExtractedPdfData {
   text: string;
@@ -29,37 +30,54 @@ export function computeFileHash(buffer: Buffer): string {
  */
 export async function parsePdfBuffer(buffer: Buffer): Promise<ExtractedPdfData> {
   const fileHash = computeFileHash(buffer);
-  
   const pages: { pageNumber: number; text: string }[] = [];
 
-  // Custom page renderer to capture page boundaries
-  const renderOptions = {
-    pagerender: (pageData: any) => {
-      return pageData.getTextContent().then((textContent: any) => {
-        let lastY: number | null = null;
-        let text = '';
-        for (const item of textContent.items) {
-          if (lastY == null || Math.abs(lastY - item.transform[5]) > 4) {
-            text += '\n';
-          }
-          text += item.str + ' ';
-          lastY = item.transform[5];
-        }
-        pages.push({
-          pageNumber: pages.length + 1,
-          text: text.trim(),
-        });
-        return text;
-      });
-    },
-  };
-
   try {
-    const data = await pdfParse(buffer, renderOptions);
+    let fullText = '';
+    let pageCount = 1;
+    let metadataTitle: string | undefined;
+    let metadataAuthor: string | undefined;
+    let creationDate: string | undefined;
 
-    // If custom page renderer didn't capture pages properly, split by form feed
-    if (pages.length === 0) {
-      const splitPages = data.text.split('\f');
+    if (typeof PDFParse === 'function' && PDFParse.prototype && PDFParse.prototype.getText) {
+      // Modern pdf-parse v2 class
+      const parser = new PDFParse({ data: buffer });
+      const res = await parser.getText();
+      fullText = res.text || '';
+      pageCount = res.total || 1;
+
+      if (res.pages && Array.isArray(res.pages) && res.pages.length > 0) {
+        res.pages.forEach((p: any, idx: number) => {
+          pages.push({
+            pageNumber: idx + 1,
+            text: (p.text || '').trim(),
+          });
+        });
+      }
+
+      try {
+        const info = await parser.getInfo();
+        if (info?.info) {
+          metadataTitle = typeof info.info.Title === 'string' ? info.info.Title.trim() : undefined;
+          metadataAuthor = typeof info.info.Author === 'string' ? info.info.Author.trim() : undefined;
+          creationDate = typeof info.info.CreationDate === 'string' ? info.info.CreationDate : undefined;
+        }
+      } catch {
+        // Ignore metadata fetch error
+      }
+    } else if (typeof pdfParseMod === 'function') {
+      // Legacy functional pdf-parse
+      const data = await pdfParseMod(buffer);
+      fullText = data.text || '';
+      pageCount = data.numpages || 1;
+      metadataTitle = data.info?.Title;
+      metadataAuthor = data.info?.Author;
+      creationDate = data.info?.CreationDate;
+    }
+
+    // Split into pages if pages array is still empty
+    if (pages.length === 0 && fullText) {
+      const splitPages = fullText.split('\f');
       splitPages.forEach((pText: string, idx: number) => {
         if (pText.trim().length > 0) {
           pages.push({
@@ -70,34 +88,48 @@ export async function parsePdfBuffer(buffer: Buffer): Promise<ExtractedPdfData> 
       });
     }
 
-    // Default if single block
     if (pages.length === 0) {
       pages.push({
         pageNumber: 1,
-        text: data.text.trim(),
+        text: fullText.trim(),
       });
     }
 
+    // Sanitize metadata title: never allow raw PDF tokens or dictionary tags
+    if (metadataTitle && (metadataTitle.startsWith('<') || metadataTitle.includes('/Type') || metadataTitle.includes('/Catalog') || metadataTitle.includes('endobj'))) {
+      metadataTitle = undefined;
+    }
+
     return {
-      text: data.text,
-      pageCount: data.numpages || pages.length,
+      text: fullText.trim(),
+      pageCount: pageCount || pages.length || 1,
       pages,
       fileHash,
       metadata: {
-        title: data.info?.Title,
-        author: data.info?.Author,
-        creator: data.info?.Creator,
-        creationDate: data.info?.CreationDate,
+        title: metadataTitle,
+        author: metadataAuthor,
+        creationDate,
       },
     };
   } catch (error) {
-    console.warn('PDF parsing error, attempting raw fallback:', error);
-    // Fallback if corrupted or encrypted
-    const fallbackText = buffer.toString('utf-8', 0, Math.min(buffer.length, 50000));
+    console.warn('PDF parsing error, extracting clean readable text:', error);
+    // Extract clean printable characters, filtering out binary PDF stream markers
+    let extractedClean = '';
+    try {
+      const str = buffer.toString('binary');
+      const matches = str.match(/[\x20-\x7E\t\n\r]{6,}/g);
+      if (matches) {
+        extractedClean = matches
+          .filter(m => !m.includes('/Type') && !m.includes('/Font') && !m.includes('/Root') && !m.includes('endobj') && !m.includes('/Catalog'))
+          .join('\n');
+      }
+    } catch {}
+
+    const safeText = extractedClean.slice(0, 50000).trim() || 'Uploaded PDF document indexed.';
     return {
-      text: fallbackText,
+      text: safeText,
       pageCount: 1,
-      pages: [{ pageNumber: 1, text: fallbackText }],
+      pages: [{ pageNumber: 1, text: safeText }],
       fileHash,
       metadata: {},
     };

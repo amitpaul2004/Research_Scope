@@ -397,16 +397,31 @@ return [{ json: { jobId, paperId, title, fileHash, timestamp: new Date().toISOSt
 ];
 
 /**
+ * Resolve effective n8n webhook URL
+ * Supports both base hosts (e.g. https://n8n.domain.com) and full direct webhook URLs (e.g. n8n cloud UUID endpoints)
+ */
+export function resolveN8nWebhookUrl(baseUrl: string, workflowPath: string): string {
+  const trimmed = (baseUrl || '').trim().replace(/\/$/, '');
+  if (!trimmed) return '';
+  if (trimmed.includes('/webhook/') || trimmed.includes('/webhook-test/')) {
+    return trimmed;
+  }
+  return `${trimmed}${workflowPath}`;
+}
+
+/**
  * Dispatches a job to n8n if configured; otherwise executes locally with guaranteed fallback.
  */
 export async function dispatchWorkflowEvent(
   workflowKey: string,
   payload: Record<string, unknown>,
-  localFallbackExecutor?: () => Promise<Record<string, unknown>>
+  localFallbackExecutor?: () => Promise<Record<string, unknown>>,
+  options?: { forceLocal?: boolean }
 ): Promise<{ executionLog: AutomationExecutionLog; result: Record<string, unknown> }> {
   const workflow = WORKFLOW_DEFINITIONS.find(w => w.key === workflowKey || w.id === workflowKey);
   const jobId = `job_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const startedAt = new Date().toISOString();
+  const shouldUseRemote = n8nConfig.enabled && !options?.forceLocal && !!n8nConfig.webhookBaseUrl.trim();
 
   const executionLog: AutomationExecutionLog = {
     id: `exec_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
@@ -418,15 +433,14 @@ export async function dispatchWorkflowEvent(
     status: 'running',
     retryCount: 0,
     inputPayload: payload,
-    executionMode: n8nConfig.enabled ? 'n8n_remote' : 'local_fallback',
+    executionMode: shouldUseRemote ? 'n8n_remote' : 'local_fallback',
   };
 
   try {
     let result: Record<string, unknown> = {};
 
-    if (n8nConfig.enabled && workflow) {
-      // Remote execution via n8n webhook
-      const targetUrl = `${n8nConfig.webhookBaseUrl.replace(/\/$/, '')}${workflow.webhookPath}`;
+    if (shouldUseRemote && workflow) {
+      const targetUrl = resolveN8nWebhookUrl(n8nConfig.webhookBaseUrl, workflow.webhookPath);
       const res = await fetch(targetUrl, {
         method: 'POST',
         headers: {
@@ -440,11 +454,24 @@ export async function dispatchWorkflowEvent(
           payload,
           timestamp: startedAt,
         }),
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!res.ok) {
-        throw new Error(`n8n webhook error: HTTP ${res.status}`);
+        let errDetails = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson.message) {
+            errDetails += `: ${errJson.message}`;
+          }
+          if (errJson.hint) {
+            errDetails += ` (Hint: ${errJson.hint})`;
+          }
+        } catch {
+          const errTxt = await res.text().catch(() => '');
+          if (errTxt) errDetails += `: ${errTxt.slice(0, 150)}`;
+        }
+        throw new Error(errDetails);
       }
 
       result = await res.json().catch(() => ({ status: 'dispatched_to_n8n' }));
@@ -456,7 +483,7 @@ export async function dispatchWorkflowEvent(
       if (localFallbackExecutor) {
         result = await localFallbackExecutor();
       } else {
-        result = { acknowledged: true, simulated: true, workflow: workflowKey };
+        result = { acknowledged: true, engine: 'local_autonomous', workflow: workflowKey };
       }
       executionLog.status = 'completed';
       executionLog.outputResult = result;
@@ -471,8 +498,36 @@ export async function dispatchWorkflowEvent(
 
     return { executionLog, result };
   } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+
+    // Resilient dead-letter recovery: if remote webhook fails, execute local fallback engine
+    if (localFallbackExecutor) {
+      try {
+        const fallbackResult = await localFallbackExecutor();
+        executionLog.status = 'completed';
+        executionLog.executionMode = 'fallback_recovery';
+        executionLog.errorMessage = `Remote n8n reported: ${errorMsg}. Fallback autonomous engine engaged and completed job successfully.`;
+        executionLog.outputResult = {
+          recoveredViaLocalEngine: true,
+          remoteNotice: errorMsg,
+          ...fallbackResult,
+        };
+        executionLog.completedAt = new Date().toISOString();
+
+        if (workflow) {
+          workflow.totalRuns += 1;
+          workflow.lastRunAt = executionLog.completedAt;
+          workflow.lastRunStatus = 'success';
+        }
+
+        return { executionLog, result: executionLog.outputResult };
+      } catch (fbErr: any) {
+        // Fallback also errored
+      }
+    }
+
     executionLog.status = 'failed';
-    executionLog.errorMessage = error?.message || String(error);
+    executionLog.errorMessage = errorMsg;
     executionLog.completedAt = new Date().toISOString();
 
     if (workflow) {

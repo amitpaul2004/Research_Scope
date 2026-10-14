@@ -9,12 +9,667 @@
       "createdAt": "2026-10-12T09:44:00.000Z"
     }
   ],
-  "papers": [],
-  "contextSessions": [],
+  "papers": [
+    {
+      "id": "paper_1791890852932_4z9g58",
+      "userId": "usr_default",
+      "title": "NeuroVision: An Automated Brain MRI Tumor Segmentation and Quantitative Spatial Analysis System",
+      "authors": [
+        "AMIT PAUL"
+      ],
+      "fileHash": "9aa98415d262acc34e8ba9a63b2a18cb7b29373f2b23d81f8c02a8c9e4fd5ab9",
+      "fileName": "NeuroVision_AI_Project_Report (3).pdf",
+      "fileSize": 2300354,
+      "filePath": "/uploads/1791890851233_NeuroVision_AI_Project_Report__3_.pdf",
+      "pageCount": 28,
+      "extractedText": "NeuroVision: An Automated Brain MRI Tumor Segmentation and\nQuantitative Spatial Analysis System\nAditya Hatua,Amit Paul,Kritika Chakraborty,Diya Das,Dimitri Dey,Abhishek Kumar Gupta\nABSTRACT\nBrain tumor segmentation from magnetic resonance imaging (MRI) is a challenging task in medical\nimage analysis primarily due to the significant morphological heterogeneity observed in tumor\ndimensions, geometric configurations, anatomical positioning, and signal intensities among\ndiverse patient populations. Manual delineation of tumor regions is time-consuming and may\nintroduce inter-observer variability. This paper presents an automated deep learning-based\nframework for brain tumor segmentation and quantitative analysis using MRI data. The proposed\nsystem employs a two-dimensional (2D) U-Net architecture for pixel-level tumor segmentation\nand accommodates both two-dimensional (2D) MRI scans and three-dimensional (3D) volumetric\nneuroimaging data formatted in NIfTI. After segmentation, image processing techniques are\napplied to identify tumor regions and extract quantitative features, including tumor area,\ncentroid, bounding-box dimensions, radius, and volume. For multiple tumor regions, spatial\nrelationships are further evaluated using centroid-to-centroid and boundary-to-boundary distance\nmeasurements. The framework incorporates 2D visualization, volumetric 3D analysis, and\nautomated generation of structured PDF and DOCX reports, providing an integrated workflow\nfrom MRI input to quantitative results and visualization. The system is implemented as a web-\nbased application that combines deep learning, computer vision, volumetric analysis, and\nautomated reporting. The proposed framework demonstrates the potential of integrating\nsegmentation and quantitative analysis into a unified platform for systematic brain MRI\nassessment. The developed system is intended as a research and decision-support prototype and\nis not intended to replace professional clinical diagnosis.\nKeywords: Brain tumor segmentation, magnetic resonance imaging, deep learning, U-Net,\nmedical image analysis, 2D MRI, 3D volumetric analysis, image processing, tumor morphometry,\nspatial analysis\n1. Introduction\nBrain tumors are abnormal growths of cells within the brain and pose significant challenges in\nmedical diagnosis, treatment planning, and disease monitoring. Accurate identification,\nlocalization, and measurement of tumor regions are essential for supporting clinical assessment.\nMagnetic Resonance Imaging (MRI) is widely used for brain examination because it provides\ndetailed soft-tissue information. However, automated MRI analysis remains challenging due to\nvariations in tumor size, shape, location, intensity, and appearance across patients.\nTraditional tumor assessment relies largely on manual examination and segmentation by trained\nmedical professionals. Although effective, manual segmentation is time-consuming and may\nintroduce observer variability. In addition to tumor boundaries, quantitative characteristics such\nas area, volume, centroid, dimensions, and spatial relationships between multiple lesions can\nprovide valuable information. These limitations have encouraged the development of automated\ncomputer-aided medical image analysis techniques.\n\n-- 1 of 28 --\n\nPage | 1\nDeep learning, particularly Convolutional Neural Networks (CNNs), has significantly improved\nmedical image segmentation. Among these approaches, U-Net is widely used for biomedical\nimage segmentation because of its encoder-decoder architecture. The encoder extracts high-level\nfeatures while the decoder progressively reconstructs spatial resolution for pixel-level\nsegmentation. Its skip connections transfer detailed spatial information from the encoder to the\ndecoder, helping preserve tumor boundaries and fine-grained features. This makes U-Net well\nsuited for segmenting irregular structures such as brain tumors.\nIn this work, an automated brain MRI tumor analysis framework based on a two-dimensional U-\nNet model is proposed. The U-Net model performs pixel-level segmentation to distinguish tumor\nregions from surrounding brain tissue. The resulting segmentation masks are processed to identify\nindividual tumor regions and extract quantitative characteristics, including area, centroid,\nbounding-box dimensions, radius, and volume.\nThe framework supports both conventional 2D MRI images and 3D NIfTI neuroimaging volumes.\nFor multiple detected tumor regions, spatial relationships are analyzed using centroid-to-centroid\nand boundary-to-boundary distances. The system also generates annotated visualizations of\nsegmentation results and performs volumetric analysis for 3D MRI data.\nAll these capabilities are integrated into a unified web-based workflow that enables MRI upload,\nU-Net-based segmentation, quantitative analysis, visualization, study management, and\nautomated PDF/DOCX report generation. The framework combines deep learning with image\nprocessing and backend services to provide a structured approach to brain MRI tumor analysis.\nThe major contributions of this work are:\n● U-Net-based segmentation: A two-dimensional U-Net architecture for pixel-level brain\ntumor segmentation.\n● 2D and 3D MRI support: Processing of conventional MRI images and NIfTI volumetric\ndatasets.\n● Quantitative tumor analysis: Automated extraction of area, centroid, dimensions, radius,\nand volume.\n● Multi-tumor spatial analysis: Calculation of centroid-to-centroid and boundary-to-\nboundary distances.\n● Visualization and reporting: Generation of annotated segmentation results and PDF/DOCX\nreports.\n● Unified web-based system: Integration of segmentation, image processing, analysis,\nvisualization, and reporting in a single workflow.\nThe proposed framework is intended as a research and decision-support prototype for\ndemonstrating the integration of U-Net-based deep learning and quantitative medical image\nanalysis. It is not intended to replace qualified medical professionals or provide autonomous\nclinical diagnosis.\n\n-- 2 of 28 --\n\nPage | 2\n2. Background and Literature Survey\n2.1 Background\nA. Brain Tumor Analysis Using MRI\nMagnetic Resonance Imaging (MRI) is an important imaging modality for the examination and\nanalysis of brain abnormalities because it provides detailed soft-tissue contrast and enables\nvisualization of intracranial structures. Brain tumor analysis generally involves identifying\nabnormal regions, determining their boundaries, and assessing characteristics such as location,\nsize, and volume. Different MRI sequences can provide complementary information about tumor\nappearance, and commonly used sequences in brain tumor segmentation research include T1-\nweighted, contrast-enhanced T1-weighted, T2-weighted, and Fluid-Attenuated Inversion Recovery\n(FLAIR) images [1].\nManual tumor delineation requires specialized expertise and can be time-consuming, particularly\nwhen tumors have irregular boundaries or when multiple lesions are present. Consequently,\nautomated and semi-automated segmentation techniques have received considerable attention\nin medical image analysis. A systematic review of MRI-based brain tumor segmentation methods\nfound that U-Net-based deep learning approaches have become particularly prominent in this\nfield [1].\nB. Medical Image Segmentation\nImage segmentation is the process of assigning a class or label to individual pixels or voxels in an\nimage. In brain tumor analysis, segmentation aims to distinguish tumor tissue from surrounding\nhealthy brain tissue and other structures. Accurate segmentation provides the foundation for\nsubsequent quantitative analysis because measurements such as tumor area, volume, centroid,\nand boundary characteristics depend directly on the quality of the segmented region.\nTraditional segmentation approaches include thresholding, region growing, clustering, edge-based\nmethods, and other mathematical or statistical techniques. However, these approaches can have\ndifficulty handling the intensity variations, irregular boundaries, heterogeneous appearance, and\ncomplex structures associated with brain tumors. The development of deep learning has enabled\nsegmentation models to learn discriminative image features directly from annotated medical\nimages.\nC. Deep Learning for Brain Tumor Segmentation\nConvolutional Neural Networks (CNNs) have become widely used for medical image analysis\nbecause they can learn hierarchical spatial features from imaging data. In brain tumor\nsegmentation, CNN-based approaches have demonstrated the ability to automatically learn\nrelevant features and produce pixel-level or voxel-level segmentation maps. Comprehensive\nsurveys of deep learning-based brain tumor segmentation have categorized existing approaches\naccording to network architecture, handling of class imbalance, multimodal processing, and other\nsegmentation strategies [2].\n\n-- 3 of 28 --\n\nPage | 3\nThe Multimodal Brain Tumor Image Segmentation Benchmark (BraTS) has played an important\nrole in evaluating and comparing automated brain tumor segmentation methods. The benchmark\nprovides standardized MRI datasets and tumor annotations, allowing researchers to evaluate\nalgorithms using common metrics and experimental protocols [3]. Common evaluation measures\ninclude the Dice similarity coefficient, Hausdorff distance, sensitivity, and specificity.\nD. U-Net Architecture\nU-Net is a convolutional encoder-decoder architecture originally proposed by Ronneberger,\nFischer, and Brox for biomedical image segmentation [4]. The architecture consists of a\ncontracting path and an expanding path. The contracting path extracts increasingly abstract\nfeatures through convolution and downsampling operations, while the expanding path\nprogressively restores spatial resolution to produce a segmentation map.\nA key feature of U-Net is the use of skip connections between corresponding encoder and\ndecoder levels. These connections allow spatial information from earlier layers to be transferred\nto the reconstruction path, helping the network preserve fine-grained boundary information. The\noriginal U-Net demonstrated that effective biomedical segmentation could be achieved even with\nrelatively limited annotated training data when combined with appropriate data augmentation\n[4].\nBecause of its relatively simple architecture and effectiveness in pixel-level segmentation, U-Net\nhas become one of the most widely used foundations for brain tumor segmentation. Subsequent\nresearch has introduced numerous U-Net variants incorporating residual connections, attention\nmechanisms, dense connections, transformer components, and other architectural modifications\n[5].\nE. Quantitative and Volumetric Tumor Analysis\nSegmentation provides a binary or multi-class representation of the tumor region, but further\nanalysis is required to convert this representation into quantitative information. Morphological\nanalysis can be used to determine characteristics such as the area of a lesion, its bounding box,\ncentroid, radius, and other geometric properties. When volumetric MRI data are available, the\nsegmented regions can additionally be analyzed across multiple slices to obtain three-dimensional\nmeasurements.\nQuantitative tumor analysis is useful because it transforms a visual segmentation result into\nstructured numerical information. In the proposed framework, the segmentation output is\ntherefore followed by morphological and spatial analysis to characterize detected tumor regions\nand their relationships.\nF. 2D and 3D MRI Analysis\nBrain MRI data can be represented as individual two-dimensional image slices or as three-\ndimensional volumetric datasets. Two-dimensional segmentation approaches process individual\nslices and can provide computational advantages compared with processing an entire 3D volume.\nHowever, volumetric analysis provides additional spatial information across consecutive slices and\nenables three-dimensional representation and measurement of anatomical structures.\n\n-- 4 of 28 --\n\nPage | 4\nRecent literature demonstrates the continued development of both 2D and 3D U-Net-based\napproaches for brain tumor segmentation. Reviews of U-Net-based methods report that\nresearchers continue to investigate the trade-off between segmentation performance,\ncomputational requirements, generalization, and the use of multimodal or volumetric information\n[5], [6]. The proposed system follows a hybrid workflow in which a 2D U-Net is used for tumor\nsegmentation while 3D volumetric MRI data can be processed and analyzed as part of the broader\nanalysis pipeline.\n2.2 Literary Review\nSeveral deep learning-based approaches have been proposed for automated brain tumor\nsegmentation from MRI scans. Ronneberger et al. introduced U-Net, an encoder-decoder\nconvolutional neural network designed for biomedical image segmentation, which demonstrated\nthe effectiveness of skip connections for preserving spatial information [1]. Since then, U-Net and\nits variants have been widely adopted for brain tumor segmentation.\nMenze et al. established the Brain Tumor Image Segmentation Benchmark (BraTS), providing\nstandardized multimodal MRI datasets and evaluation protocols for comparing automated tumor\nsegmentation methods [2]. Subsequent studies have explored advanced U-Net variants,\nconvolutional neural networks, attention mechanisms, and three-dimensional segmentation\ntechniques to improve segmentation accuracy and robustness [3], [4].\nAlthough existing research has achieved significant progress in automated tumor segmentation,\nmany approaches primarily focus on segmentation performance and benchmark evaluation. Less\nemphasis is placed on integrating segmentation with detailed tumor morphometric\nmeasurements, spatial relationships between multiple lesions, visualization, and automated\nreporting within a single system.\nThe proposed work addresses this gap by combining 2D U-Net-based tumor segmentation with\nquantitative morphological analysis, spatial analysis, 2D visualization, 3D volumetric analysis, and\nautomated report generation. This provides an integrated workflow that extends beyond\nsegmentation to produce structured and interpretable information from brain MRI data.\n3. Methodology\nThe proposed system provides an integrated pipeline for automated brain tumor segmentation\nand quantitative analysis from magnetic resonance imaging (MRI) data. The overall methodology\nconsists of MRI data acquisition and preprocessing, deep learning-based tumor segmentation,\ntumor region extraction, morphological analysis, spatial analysis, visualization, and automated\nreport generation. The system supports both two-dimensional (2D) MRI images and three-\ndimensional (3D) volumetric neuroimaging data.\nA. MRI Data Input and Preprocessing\nThe system accepts MRI data in commonly used image formats, including PNG and JPEG images,\nas well as NIfTI files used for volumetric neuroimaging data. For 2D input, individual MRI images\nare processed directly. For NIfTI volumes, the volumetric data are loaded and individual slices can\nbe extracted for subsequent processing.\n\n-- 5 of 28 --\n\nPage | 5\nBefore segmentation, the input images undergo preprocessing to obtain a suitable representation\nfor the deep learning model. Image dimensions and intensity characteristics are standardized\naccording to the requirements of the segmentation pipeline. The preprocessed image is then\nprovided as input to the trained U-Net model.\nB. U-Net-Based Tumor Segmentation\nA two-dimensional U-Net architecture is employed for automatic tumor segmentation. U-Net\nconsists of an encoder path and a decoder path connected through skip connections. The encoder\nextracts hierarchical features from the MRI image, while the decoder reconstructs the spatial\nrepresentation required to generate a pixel-level segmentation map.\nFor an input MRI image I, the trained model produces a segmentation output:\nThe predicted segmentation map is mathematically represented as:\nS = fθ(I)\nwhere fθ represents the trained U-Net model with parameters θ, I represents the input image,\nand S represents the predicted tumor segmentation map. The predicted output is then converted\ninto a binary representation to distinguish tumor pixels from the background. The resulting binary\nmask forms the basis for subsequent quantitative analysis.\nC. Tumor Region Extraction\nAfter segmentation, the binary tumor mask is processed to identify individual connected tumor\nregions. Image-processing operations are applied to obtain the boundaries and geometric\ncharacteristics of the detected regions.\nFor each identified tumor region, the system determines its spatial extent and generates an\nassociated representation that can be used for further morphological and spatial analysis.\nD. Morphological Analysis\nThe segmented tumor regions are analyzed to obtain quantitative morphological characteristics.\nThese measurements provide numerical information about the size and location of each detected\nlesion.\nThe system calculates parameters including:\n● Tumor area\n● Bounding-box dimensions\n● Centroid coordinates\n● Radius\n● Tumor volume\nThe centroid of a segmented region can be represented as:\nC = (x₍c₎, y₍c₎)\nwhere x₍c₎ and y₍c₎ represent the x- and y-coordinates of the center of the detected tumor region,\nrespectively.\n\n-- 6 of 28 --\n\nPage | 6\nFor volumetric MRI data, the segmented tumor regions across multiple slices can be analyzed\ncollectively to estimate the tumor volume. This enables the system to capture tumor\ncharacteristics beyond individual two-dimensional (2D) slices and provides a more comprehensive\nrepresentation of the tumor’s spatial extent and overall morphology.\nE. Spatial Analysis of Multiple Tumors\nWhen multiple tumor regions are detected, the proposed framework analyzes their spatial\nrelationships. The distance between the centroids of two tumor regions is calculated using the\nEuclidean distance:\nD_c = √[(x₂ − x₁)² + (y₂ − y₁)²]\nwhere C₁ = (x₁, y₁) and C₂ = (x₂, y₂) represent the centroids of the two detected tumor regions,\nrespectively.\nIn addition to the centroid distance, the system evaluates the shortest distance between the\nboundaries of the detected tumor regions. These measurements provide additional information\nabout the relative positioning and spatial separation of multiple lesions.\nF. 2D Visualization and 3D Volumetric Analysis\nThe segmentation results are visually presented by overlaying the detected tumor regions on the\noriginal MRI images. This allows the user to compare the original image with the predicted\nsegmentation and visually examine the detected regions.\nFor volumetric MRI data, the system supports analysis of three-dimensional neuroimaging data.\nInformation obtained from multiple slices can be used for volumetric representation and\nquantitative volume analysis. This provides a three-dimensional perspective of tumor\ncharacteristics while the underlying segmentation model operates on individual 2D slices.\nG. Automated Report Generation\nFollowing the completion of segmentation and quantitative analysis, the extracted information is\norganized into structured reports. The system generates PDF and DOCX documents containing the\nrelevant analysis results, measurements, and visualizations.\nThe reporting module transforms computational outputs into a more accessible format, allowing\nthe complete analysis to be documented and reviewed without requiring direct interaction with\nthe underlying processing pipeline.\nH. Integrated System Workflow\nThe complete methodology can therefore be represented as the following sequence:\nMRI Input → Preprocessing → 2D U-Net Segmentation → Tumor Mask → Region Extraction →\nMorphological Analysis → Spatial/Volumetric Analysis → Visualization → Automated Report\n3.1 Working Flow Chart\nTraining Flow\n\n-- 7 of 28 --\n\nPage | 7\nPaired MRI images and ground-truth masks are audited and split patient-wise into training,\nvalidation, and test sets. A 2D U-Net is trained, the best validation model is saved, and its\nperformance is evaluated on the held-out test set. Outputs include segmentation masks, overlays,\nmeasurements, and reports.\nFigure 1. Supplied training and analysis workflow.\n\n-- 8 of 28 --\n\nPage | 8\nUser Flow\nThe user uploads an MRI image, which is preprocessed into a grayscale image or NIfTI middle slice.\nA configured U-Net model (or mock fallback) performs segmentation. The system outputs a\nsegmentation mask, tumor overlay, area/size/location features, and downloadable reports.\nFigure 2. Supplied user-facing inference workflow reference.\nFigure 3. Er Diagram\n\n-- 9 of 28 --\n\nPage | 9\nFigure 4.Clinical report generation\n3.2 Data Collection and Preprocessing\nThe dataset used in the proposed brain tumor segmentation system consists of paired MRI images\nand their corresponding tumor segmentation masks. A dataset audit was performed on the root\ndataset/ directory to verify the quality and consistency of the available data.\nFigure 5. 2D Tumor Mask Representation\n\n-- 10 of 28 --\n\nPage | 10\nFigure 6. 3D Tumor Mask Representation\nFigure 7. Database of brain tumor\nFigure 8. Training Output of 3D images\n\n-- 11 of 28 --\n\nPage | 11\nFigure 9. Training Output of 2D images\nThe major data collection and preprocessing steps are as follows:\n1. Dataset Composition:\nThe audited dataset contains 20 valid MRI–mask pairs, including 20 MRI images, 20\ncorresponding segmentation masks, and 20 unique patient identifiers. No errors were\nreported during the dataset audit.\n2. Dataset Verification:\nEach MRI image is verified against its corresponding mask. The verification process checks\nfor missing files, unreadable images, dimensional mismatches, and invalid mask values.\n3. Mask Processing:\nThe segmentation masks are converted into binary masks using the condition\nmask>0mask > 0. This operation separates tumor regions from the background while\npreserving the original source mask files.\n4. Image Conversion:\nInput MRI images are converted into grayscale format to provide a consistent single-\nchannel representation for the U-Net model.\n5. Image Resizing:\nAll MRI images and corresponding masks are resized to 256 × 256 pixels, providing a\nstandardized spatial resolution for model training and inference.\n6. Intensity Normalization:\nEach MRI image is normalized using its individual mean and standard deviation. This\nreduces variations in image intensity and provides a more consistent input distribution for\nthe segmentation model.\n7. Data Augmentation:\nAugmentation is applied only to the training data to increase the diversity of training\nsamples and reduce overfitting. The configured transformations include random rotation,\nscale adjustment, and occasional intensity modification. Horizontal and vertical flipping are\ndisabled in the experimental configuration.\n\n-- 12 of 28 --\n\nPage | 12\n8. Image–Mask Alignment:\nWhen geometric augmentation is applied, the same spatial transformation is applied to\nboth the MRI image and its corresponding mask to maintain accurate pixel-level\ncorrespondence.\n9. Dataset Splitting:\nThe audited dataset is divided into training, validation, and testing subsets using a fixed\nrandom seed of 42:\n○ Training set: 14 images\n○ Validation set: 3 images\n○ Test set: 3 images\n10. Training and Evaluation:\nThe training set is used to optimize the U-Net model, while the validation set is used for\nmodel monitoring during development. The held-out test set is reserved for final\nevaluation on unseen MRI images.\nPreprocessing Pipeline\nThe complete preprocessing workflow is:\nMRI Image + Mask → Data Validation → Grayscale Conversion → 256×256 Resizing →\nNormalization → Train-only Augmentation → Patient-wise Train/Validation/Test Split\nThis pipeline ensures that the MRI images and masks are properly validated and standardized\nbefore being used for 2D U-Net training and evaluation.\n3.3 Architecture of Proposed Model\nThe proposed learned model is a 2D, single-channel U-Net with base width 32. It uses repeated convolution,\nbatch normalization, and ReLU blocks in encoder stages; max pooling; a bottleneck; transpose-convolution\ndecoder stages; skip connections; and a one-channel output head. Inference resizes the input to the saved\nimage size, applies the model, uses sigmoid and a 0.5 threshold, then resizes the binary result back to the\noriginal image dimensions.\n• Backend: FastAPI application with upload, analysis, report, and health routes; Uvicorn is the configured ASGI\nserver.\n• Segmentation: a configured checkpoint produces U-Net predictions; absent or invalid MODEL_PATH results in\nMockSegmentationModel (mock v0.1).\n• Analysis: OpenCV/scikit-image/SciPy-based image operations, connected components, bounding boxes,\ncentroids, areas, equivalent radii, maximum diameter, and pairwise spatial distances.\n• Reports: ReportLab produces PDF reports and python-docx produces DOCX reports.\n• Frontend: static HTML5, CSS3, and vanilla ES6 JavaScript served by the FastAPI application.\n\n-- 13 of 28 --\n\nPage | 13\nFigure 10. Proposed Model for Medical Image Segmentation\n3.4 Entity Relationship Diagram and Data Persistence\nThe physical SQLite schema implemented in backend/models/database.py contains one studies table: study_id\n(primary key), filename, created_at, and analysis_json. Tumor results, pairwise distances, model information,\nimage URLs, warnings, and metadata are carried as structured analysis data and serialized into analysis_json;\nthey are not separate normalized database tables in the implementation.\nEntity / store Implemented fields or content Relationship / purpose\nstudies (SQLite) study_id, filename, created_at,\nanalysis_json\nOne record per uploaded study;\nanalysis_json is updated after\nanalysis.\nAnalysisResult (Pydantic) tumors, pairwise_analysis, model,\nimage URLs, warnings, metadata\nStructured response and serialized\nstudy analysis; not a separate\ndatabase table.\nFilesystem uploads, processed, predictions,\nreports\nStores input assets, generated\nimages, and generated PDF/DOCX\nfiles.\n\n-- 14 of 28 --\n\nPage | 14\n4. Experiment\nFigure 11. Uploading of MRI Scanned Images\nFigure 12. MRI Scanned image uploaded\n\n-- 15 of 28 --\n\nPage | 15\nFigure 13. Annotated MRI Visualization with pairwise spatial analysis\nFigure 14. Suggestions for Doctors and Hospitals\n\n-- 16 of 28 --\n\nPage | 16\nFigure 15. Radiology and Clinical Report\n\n-- 17 of 28 --\n\nPage | 17\nFigure 16.Segmentation and Radiological Findings\n\n-- 18 of 28 --\n\nPage | 18\nTable 1. Model performance from saved artefacts.\nMeasure Recorded result Source\nRecorded training epochs 16 ml/outputs/training_history.json\nBest validation Dice 0.9656 (epoch 6) ml/outputs/training_history.json\nHeld-out test loss 0.6542 ml/outputs/test_metrics.json\nHeld-out test Dice 0.9600 ml/outputs/test_metrics.json\nHeld-out test IoU 0.9235 ml/outputs/test_metrics.json\nHeld-out test precision 0.9776 ml/outputs/test_metrics.json\nHeld-out test recall 0.9445 ml/outputs/test_metrics.json\nTable 2. Comparison with Existing Brain Tumor Segmentation and Analysis Systems\nSystem/Tec\nhnique\nSegmentat\nion\nQuantificati\non\nMulti-\nlesion\nAnalysis\nSpatial\nAnalysis\nAutomat\ned\nReportin\ng\nWeb\nWorkfl\now\nClinical\nIntegration/\nMain\nStrength\nNeurovision\nAI(Proposed)\n2D U-Net Area, volume,\ndiameter,\nradius,\ncentroid,\nbounding box\nYes Centroid\ndistance,\nboundary\ndistance,\nrelative\nposition\nPDF, DOCX,\nDoctor\nReport\nYes Developing;\nintegrated\nweb-based\nworkflow for\nsegmentation,\nmulti-tumor\nanalysis,\nspatial\nanalysis, and\nreport\ngeneration\nRaidionics Attention U-\nNet\nVolume,\ndiameter,\nMultifocality Anatomical\nlocalization\nStandardiz\ned clinical\nreports\nDesktop\n/ Slicer\nStrong\nresearch\nworkflow\n\n-- 19 of 28 --\n\nPage | 19\nlocation,\nlaterality\nnnU-Net Configurable\nU-Net\nPrimarily\nsegmentation\nmetrics\nTask-\ndependent\nTask-\ndependent\nNo No Research\nframework\nMONAI Label Multiple AI\nmodels\nApplication-\ndependent\nApplication-\ndependent\nApplication-\ndependent\nNo core\nreport\nsystem\nViewer-\nintegrate\nd\nStrong\nannotation\nintegration\n3D Slicer Extensions /\nmodels\nExtensive Yes Extensive Extension-\ndependent\nNo Strong medical\nimaging\necosystem\nSiemens AI-Rad\nCompanion\nDeep\nlearning\nVolumetric\nanalysis\nModule-\ndependent\nReference /\ndeviation\nanalysis\nYes Clinical\nplatform\nStrong clinical\nintegration\nBraTS Benchmark\nmodels\nDice,\nHausdorff\nDistance (HD),\netc.\nResearch-\nspecific\nResearch-\nspecific\nNo No Benchmark /\nresearch\n\n-- 20 of 28 --\n\nPage | 20\nFig.6 Variation of Intersection over Union (IoU) Score with Training Epochs\nFig.7 Variation of Training Loss with Training Epochs\n\n-- 21 of 28 --\n\nPage | 21\nFig.8 Variation of Dice Score with Training Epochs\nFig.9 U-Net Segmentation Performance – IoU and Dice Scores\n\n-- 22 of 28 --\n\nPage | 22\n4.2 Limitations\n1. Limited dataset size and diversity\nThe biggest limitation is the amount and diversity of MRI data used for training and evaluation.\nIf the model is trained on a relatively limited dataset, it may not generalize well to:\n● different hospitals\n● different MRI scanners\n● different imaging protocols\n● different patient populations\n● different tumor appearances\nA model can perform very well on its held-out dataset but perform differently on completely unseen external\ndata.\n2. No external baseline comparison\nOur project reports:\nMetric NeuroVision U-Net\nDice 0.9600\nIoU 0.9235\nThe current model achieved the reported Dice and IoU scores on the evaluated data.\n3. Segmentation is not the same as diagnosis\nThe system primarily performs MRI-based brain tumor segmentation and identifies the suspected tumor\nregion. However, segmentation alone does not establish a definitive clinical diagnosis, tumor type, or\ngrade. Therefore, the system should be considered a decision-support tool and not a replacement for\nradiologists or pathological diagnosis.\n4. Limited MRI Sequence Information\nBrain tumors can be evaluated using different MRI sequences, such as:\n● T1\n● T1-contrast\n● T2\n● FLAIR\n● DWI/ADC\n● SWI\n● Perfusion\n\n-- 23 of 28 --\n\nPage | 23\nOur proposed system mainly uses a limited set of MRI sequence information. Therefore, it may not capture\nall the clinically relevant characteristics of a tumor. This can affect the performance of our model, especially\nin complex tumor cases.\n5. Multiple tumors can be challenging\nOur project is intended to support cases where more than one tumor may appear in a brain.\nHowever, multiple lesions introduce additional challenges:\nMRI→T1,T2,T3,…,Tn\nThe system needs to correctly distinguish:\n● separate tumors\n● connected tumor regions\n● edema\n● necrotic areas\n● normal anatomical structures\nSmall or closely positioned lesions can be particularly difficult to separate correctly.\n6. Small tumors may be difficult to segment\nA large tumor occupies many pixels, making segmentation easier.\nFor a small tumor:\nTumor Area≪Brain Area\nEven a small boundary error can significantly affect Dice and IoU.\nFor example, if a tumor contains only a few hundred pixels, incorrectly predicting several dozen pixels can\nnoticeably reduce the segmentation score.\n7. Image preprocessing affects performance\nOur pipeline includes image preparation/preprocessing before segmentation.\nDifferences in:\n● image resolution\n● intensity range\n● contrast\n● orientation\n● normalization\n● image size\n● MRI acquisition protocol\ncan affect the model's prediction.\n\n-- 24 of 28 --\n\nPage | 24\nTherefore:\nDifferent Input Distribution→Different Model Performance\nThis is known as a distribution/generalization problem.\n8. Model may have difficulty with unusual tumor appearances\nBrain tumors do not always have the same appearance.\nThey can vary in:\n● size\n● shape\n● location\n● intensity\n● enhancement pattern\n● edema\n● necrosis\n● boundary sharpness\nA model trained mostly on common patterns may struggle with uncommon cases.\n9. Ground-truth mask dependency\nDice and IoU require a reference segmentation mask.\nOur evaluation essentially compares:\nPredicted Mask vs.Ground Truth Mask\nTherefore, the quality of the ground-truth annotations directly affects evaluation.\nIf the manual segmentation is inaccurate or different experts disagree about tumor boundaries, the\nmeasured score can be affected.\n10. Limited clinical validation\nA high Dice score does not automatically mean the system is clinically ready.\nBefore real clinical deployment, you would need much stronger validation, such as:\nTechnical Validation→External Validation→Clinical Validation→Regulatory Evaluation\n11. Report generation is not a substitute for radiologist interpretation\nOur project generates an MRI-based report containing things such as:\n● tumor measurements\n● segmentation information\n\n-- 25 of 28 --\n\nPage | 25\n● spatial information\n● images\n● digital signature/report information\nThis is useful for presenting the analysis, but automatically generated text should not be treated as an\nindependently verified medical diagnosis.\nThe generated report should be reviewed by a qualified medical professional before clinical use.\n12. Fallback Segmentation as a Limitation\nOur system uses PyTorch U-Net inference along with a deterministic spatial fallback mechanism.\n● The fallback method is used for robustness and testing when U-Net inference is unavailable.\n● However, it does not provide the same learned segmentation capability as the U-Net model.\n● Therefore, fallback segmentation should not be considered equivalent to the model-based\nsegmentation results.\n● This distinction is important when evaluating and presenting the performance of our proposed\nsystem.\n13. Hardware and computational limitations\nU-Net inference and image processing can require considerable computational resources depending on:\n● image resolution\n● number of MRI slices\n● model size\n● GPU availability\n● number of patients processed\nA CPU-only environment may result in slower processing compared with GPU inference.\n14. No longitudinal analysis\nOur current workflow appears primarily focused on analyzing an individual MRI study.\nIt does not necessarily provide comprehensive:\nScan1→Scan2→Scan3\ntumor-growth tracking.\nA future system could compare tumor measurements over time:\n\n-- 26 of 28 --\n\nPage | 26\n5. Conclusion\nThis work presented an integrated deep learning-based framework for automated brain tumor segmentation\nand quantitative analysis from magnetic resonance imaging (MRI). The proposed approach combines a two-\ndimensional U-Net segmentation model with image processing, morphological analysis, spatial analysis,\nvolumetric analysis, visualization, and automated reporting to provide a complete MRI analysis workflow. Unlike\napproaches that focus exclusively on generating a segmentation mask, the proposed framework extends the\nanalysis by extracting measurable tumor characteristics such as area, centroid, dimensions, radius, and volume,\nwhile also determining spatial relationships between multiple detected lesions.\nThe framework supports both conventional two-dimensional MRI images and three-dimensional NIfTI-based\nvolumetric data. Segmentation results can be visualized over the original MRI data, while quantitative outputs\nare organized into structured reports in PDF and DOCX formats. This integration demonstrates how deep\nlearning-based segmentation can be combined with conventional image-processing and visualization techniques\nto transform raw medical images into structured analytical information.\nThe proposed system provides a modular foundation for computer-aided brain MRI analysis and demonstrates\nthe feasibility of integrating segmentation and post-segmentation analysis within a single platform. However,\nthe system is currently intended as a research and decision-support prototype and should not be considered a\nsubstitute for professional clinical diagnosis. Its performance and generalizability depend on the quality and\ndiversity of the training and evaluation data.\nFuture development will focus on improving segmentation robustness through larger and more diverse\ndatasets, incorporating multimodal MRI sequences, enhancing three-dimensional tumor reconstruction and\nvisualization, and evaluating the framework using established segmentation metrics and independent datasets.\nFurther integration with standardized medical imaging formats and clinical information systems, along with\nextensive clinical validation, could improve the practical applicability of the framework. Overall, the proposed\nwork establishes a foundation for developing more comprehensive, quantitative, and interpretable computer-\naided tools for brain tumor MRI analysis.\n.\nReferences\n1. Wideheim, A.K., Edvardsson, T., Påhlson, A., Ahlström, G., 2002. A family’s perspective on living with a\nhighly malignant brain tumor. Cancer Nurs. 25 (3), 236–244.\n2. Soomro, T.A., Zheng, L., Afifi, A.J., Ali, A., Soomro, S., Yin, M., Gao, J., 2022. Image segmentation for MR\nbrain tumor detection using machine learning: A review. IEEE Rev. Biomed. Eng.\n3. Nizamani, A. H., Chen, Z., Nizamani, A. A., & Bhatti, U. A. (2023). Advance brain tumor\nsegmentation using feature fusion methods with deep U-Net model with CNN for MRI data.\nJournal of King Saud University – Computer and Information Sciences, 35(9), 101793.\n4. Agrawal, P., Katal, N., & Hooda, N. (2022). Segmentation and classification of brain tumor\nusing 3D-UNet deep neural networks. International Journal of Cognitive Computing in\nEngineering, 3, 199–210. DOI: 10.1016/j.ijcce.2022.11.001.\n5. Alqudah, A. M., Alquraan, H., Qasmieh, I. A., Alqudah, A., & Al-Sharu, W. (2020). Brain tumor\nclassification using deep learning technique–a comparison between cropped, uncropped, and\nsegmented lesion images with different sizes. arXiv preprint arXiv :2 001.0884.\n6. Murthy, M. Y. B., Koteswararao, A., & Babu, M. S. (2022). Adaptive fuzzy deformable fusion and\noptimized CNN with ensemble classification for automated brain tumor diagnosis. Biomedical\nEngineering Letters, 12 , 37–58 .\n7. Rehman, A., et al., (2021). Microscopic brain tumor detection and classification using 3D CNN and\nfeature selection architecture. Microscopy Research and Technique, 84 , 133–149 .\n\n-- 27 of 28 --\n\nPage | 27\n8. Walsh, J., Othmani, A., Jain, M., & Dev, S. (2022). Using U-Net Network for Efficient Brain Tumor\nSegmentation in MRI Images. Healthcare Analytics, 2, 100098\n9. A.Md. Sattar,M. Kr. Ranjan, Automatic cancer detectionusing probabilistic convergence theory,\nin:Computational IntelligenceinOncology:Applications in\nDiagnosis,PrognosisandTherapeuticsofCancers,Springer,2022,pp.111–122.\n10. J.Hu, X.Gu, X.Gu,Mutual ensemble learning for brain tumor segmentation,\nNeurocomputing504(2022)68–81.\n11. X.-X. Yin, L. Sun, Y. Fu, R. Lu, Y. Zhang, U-net-based medical image segmentation, J. Healthc. Eng. 2022\n(2022).\n12. Yang, Z. A Novel Brain Image Segmentation Method Using an Improved 3D U-Net Model. Sci. Program\n2021, 2021, 4801077.\n13. Deep learning approaches for brain tumor detection and classification using MRI images (2020 to 2024):\nA systematic review. (2024).\n14. Advancements in deep learning techniques for brain tumor segmentation: A survey. (2024). Informatics in\nMedicine Unlocked, 50, 101576.\n15. Liu, Z., et al. (2024). A review of deep learning for brain tumor analysis in MRI. npj Precision Oncology.\n16. Ronneberger, O., Fischer, P., & Brox, T. (2015). U-Net: Convolutional Networks for Biomedical Image\nSegmentation. Medical Image Computing and Computer-Assisted Intervention (MICCAI), 234–241.\n17. Havaei, M., Davy, A., Warde-Farley, D., Biard, A., Courville, A., Bengio, Y., Pal, C., Jodoin, P.-M., & Larochelle,\nH. (2017). Brain tumor segmentation with Deep Neural Networks. Medical Image Analysis, 35, 18–31.\n18. Pereira, S., Pinto, A., Alves, V., & Silva, C. A. (2016). Brain Tumor Segmentation Using Convolutional Neural\nNetworks in MRI Images. IEEE Transactions on Medical Imaging, 35(5), 1240–1251.\n19. Isensee, F., Jaeger, P. F., Kohl, S. A. A., Petersen, J., & Maier-Hein, K. H. (2021). nnU-Net: A self-configuring\nmethod for deep learning-based biomedical image segmentation. Nature Methods, 18, 203–211.\n20. Milletari, F., Navab, N., & Ahmadi, S.-A. (2016). V-Net: Fully Convolutional Neural Networks for Volumetric\nMedical Image Segmentation. 2016 Fourth International Conference on 3D Vision (3DV), 565–571.\n21. Segmenting brain tumors from FLAIR MRI using fully convolutional neural networks. (2019). Computer\nMethods and Programs in Biomedicine, 176, 135–148. DOI: 10.1016/j.cmpb.2019.05.006\n\n-- 28 of 28 --",
+      "uploadDate": "2026-10-13T11:27:32.932Z",
+      "status": "analyzed",
+      "tags": [
+        "Academic Paper",
+        "28 Pages",
+        "Research Paper",
+        "Empirical Study",
+        "Methodology"
+      ],
+      "categories": [
+        "General Science"
+      ],
+      "collections": [
+        "Default Library"
+      ],
+      "analysis": {
+        "abstract": "Brain tumor segmentation from magnetic resonance imaging (MRI) is a challenging task in medical image analysis primarily due to the significant morphological heterogeneity observed in tumor dimensions, geometric configurations, anatomical positioning, and signal intensities among diverse patient populations. Manual delineation of tumor regions is time-consuming and may introduce inter-observer variability. This paper presents an automated deep learning-based framework for brain tumor segmentation and quantitative analysis using MRI data. The proposed system employs a two-dimensional (2D) U-Net architecture for pixel-level tumor segmentation and accommodates both two-dimensional (2D) MRI scans and three-dimensional (3D) volumetric neuroimaging data formatted in NIfTI. After segmentation, im",
+        "executiveSummary": "Analysis of \"NeuroVision: An Automated Brain MRI Tumor Segmentation and Quantitative Spatial Analysis System\" (28 pages). The paper investigates specialized methodologies, evaluating empirical performance and domain constraints.",
+        "researchObjectives": [
+          "Investigate novel computational strategies for NeuroVision: An Automated Brain MRI Tumo",
+          "Benchmark proposed approach against standard state-of-the-art baselines",
+          "Evaluate robustness, computational efficiency, and generalization"
+        ],
+        "problemStatement": "Addressing computational bottlenecks, feature representation challenges, and generalization limits in NeuroVision: An Automated Brain MRI Tumor Segmenta.",
+        "mainContributions": [
+          "Comprehensive mathematical or empirical formulation presented in the study",
+          "Experimental benchmark validation across quantitative metrics",
+          "Comparative evaluation highlighting tradeoffs against existing methods"
+        ],
+        "methodology": "Experimental protocol utilizing multi-stage data preprocessing, feature representation learning, and quantitative metric benchmarking.",
+        "algorithmsAndModels": [
+          "Neural Representation Network",
+          "Comparative Baseline Models",
+          "Statistical Validation"
+        ],
+        "datasetInformation": "Evaluated on experimental benchmark records spanning 28 pages of documentation and empirical testing.",
+        "experimentalSetup": "Standard cross-validation experimental protocol with quantitative metric evaluation.",
+        "resultsAndFindings": [
+          "Demonstrated empirical improvements over baseline comparison models",
+          "Validated statistical significance across core evaluation criteria"
+        ],
+        "limitations": [
+          "Sensitivity to distribution shift across varying acquisition environments",
+          "Computational or data volume requirements during model training"
+        ],
+        "futureWork": [
+          "Validation on larger heterogeneous multi-cohort benchmarks",
+          "Optimization for low-latency or resource-constrained deployment"
+        ],
+        "keyTerminology": [
+          {
+            "term": "Benchmark Metric",
+            "definition": "Standardized quantitative evaluation criterion used for model ranking"
+          },
+          {
+            "term": "Generalization",
+            "definition": "Ability of the model to maintain predictive validity on unseen test cohorts"
+          }
+        ],
+        "references": [
+          {
+            "citation": "Foundational literature cited within document bibliography",
+            "year": 2024,
+            "title": "Related Research"
+          }
+        ],
+        "suggestedTags": [
+          "Research Paper",
+          "Empirical Study",
+          "Methodology"
+        ],
+        "analyzedAt": "2026-10-13T11:27:33.509Z"
+      },
+      "aiLikelihood": {
+        "overallAiScore": 22,
+        "overallHumanScore": 78,
+        "confidence": "High",
+        "methodologyExplanation": "Stylometric analysis evaluating sentence length variance, lexical dispersion, and transition entropy. Experimental heuristic only.",
+        "isExperimentalHeuristic": true,
+        "pageStats": [
+          {
+            "page": 1,
+            "averageAiScore": 22,
+            "passageCount": 2
+          },
+          {
+            "page": 2,
+            "averageAiScore": 22,
+            "passageCount": 2
+          },
+          {
+            "page": 3,
+            "averageAiScore": 22,
+            "passageCount": 2
+          },
+          {
+            "page": 4,
+            "averageAiScore": 22,
+            "passageCount": 2
+          },
+          {
+            "page": 5,
+            "averageAiScore": 22,
+            "passageCount": 2
+          }
+        ],
+        "passages": [
+          {
+            "id": "p-0",
+            "pageNumber": 1,
+            "text": "NeuroVision: An Automated Brain MRI Tumor Segmentation and\nQuantitative Spatial Analysis System\nAditya Hatua,Amit Paul,Kritika Chakraborty,Diya Das,Dimitri Dey,Abhishek Kumar Gupta\nABSTRACT\nBrain tumor segmentation from magnetic resonance imaging (MRI) is a challenging task in me...",
+            "aiScore": 18,
+            "humanScore": 82,
+            "confidence": "High",
+            "flaggedReasons": [
+              "Standard academic syntax",
+              "High domain lexicon density"
+            ]
+          },
+          {
+            "id": "p-1",
+            "pageNumber": 2,
+            "text": "Page | 1\nDeep learning, particularly Convolutional Neural Networks (CNNs), has significantly improved\nmedical image segmentation. Among these approaches, U-Net is widely used for biomedical\nimage segmentation because of its encoder-decoder architecture. The encoder extracts high-...",
+            "aiScore": 22,
+            "humanScore": 78,
+            "confidence": "High",
+            "flaggedReasons": [
+              "Standard academic syntax",
+              "High domain lexicon density"
+            ]
+          },
+          {
+            "id": "p-2",
+            "pageNumber": 3,
+            "text": "Page | 2\n2. Background and Literature Survey\n2.1 Background\nA. Brain Tumor Analysis Using MRI\nMagnetic Resonance Imaging (MRI) is an important imaging modality for the examination and\nanalysis of brain abnormalities because it provides detailed soft-tissue contrast and enables\nvi...",
+            "aiScore": 26,
+            "humanScore": 74,
+            "confidence": "High",
+            "flaggedReasons": [
+              "Standard academic syntax",
+              "High domain lexicon density"
+            ]
+          },
+          {
+            "id": "p-3",
+            "pageNumber": 4,
+            "text": "Page | 3\nThe Multimodal Brain Tumor Image Segmentation Benchmark (BraTS) has played an important\nrole in evaluating and comparing automated brain tumor segmentation methods. The benchmark\nprovides standardized MRI datasets and tumor annotations, allowing researchers to evaluate\na...",
+            "aiScore": 30,
+            "humanScore": 70,
+            "confidence": "High",
+            "flaggedReasons": [
+              "Standard academic syntax",
+              "High domain lexicon density"
+            ]
+          }
+        ],
+        "analyzedAt": "2026-10-13T11:27:33.509Z"
+      }
+    }
+  ],
+  "contextSessions": [
+    {
+      "id": "sess_1791890731139_70xy2o",
+      "userId": "usr_default",
+      "topicOrQuestion": "PARKINSON’S DISEASE DETECTION FROM SPEECH",
+      "additionalContext": "ADVANCED PROJECT REPORT\nPARKINSON’S DISEASE DETECTION FROM SPEECH\nUSING A NEURAL NETWORK\nA Machine Learning and Neural Network Based Study\nSubmitted in partial fulfilment of the requirements for the degree of\nBACHELOR OF TECHNOLOGY\nDepartment of Computer Science and Engineering\nPrepared By:\nName: ______________________________\nRoll No.: ___________________________\nRegistration No.: ____________________\nUnder the Guidance of:\n_______________________________\nAcademic Session: 2026–2027\nCERTIFICATE\nThis is to certify that the project report entitled “Parkinson’s Disease Detection from Speech Using a Neural Network” is a bonafide academic project prepared by __________________________ of the Department of Computer Science and Engineering. The work presents the design of a machine-learning pipeline for classification of Parkinson’s disease using speech-derived acoustic measurements.\nThe report has been prepared for academic evaluation and demonstrates understanding of data preprocessing, neural-network architecture, model training, performance evaluation and responsible interpretation of health-related machine-learning results.\nGuide Signature: ____________________ Date: __________\nHead of Department: _________________ Date: __________\nACKNOWLEDGEMENT\nI express my sincere gratitude to my project guide and the Department of Computer Science and Engineering for their guidance and support. I also acknowledge the UCI Machine Learning Repository and the researchers who created the Parkinson’s speech datasets used as the methodological basis for this project.\nABSTRACT\nParkinson’s disease (PD) is a progressive neurological disorder that can affect speech and voice. Acoustic changes such as instability in pitch, amplitude variation and altered noise characteristics can be represented numerically and used for computational analysis. This project develops an advanced academic framework for detecting Parkinson’s disease from speech-derived measurements using a multilayer perceptron (MLP) neural network.\nThe study uses the Oxford Parkinson’s Disease Detection Dataset as the principal benchmark. The UCI repository describes the dataset as multivariate, with 197 instances and 22 features, collected from 31 people, including 23 people with Parkinson’s disease. The project pipeline covers data inspection, target separation, feature scaling, leakage-aware splitting, neural-network training and multi-metric evaluation.\nThe proposed architecture uses dense layers with ReLU activation, dropout regularization and a sigmoid output for binary classification. Accuracy, precision, recall, specificity, F1-score and confusion-matrix analysis are recommended. The report additionally discusses subject-level leakage, small sample size, external validation, demographic variation, recording conditions and the distinction between academic classification and clinical diagnosis.\nKeywords: Parkinson’s disease, speech analysis, neural network, multilayer perceptron, acoustic features, machine learning, classification, voice biomarkers.\nTABLE OF CONTENTS\n1. Introduction\n2. Problem Statement and Objectives\n3. Background and Literature Survey\n4. Dataset and Speech Features\n5. Proposed Methodology\n6. Neural Network Architecture\n7. Experimental Design\n8. Results and Analysis\n9. Comparison with Existing Techniques\n10. Limitations, Ethics and Challenges\n11. Conclusion and Future Scope\n12. Implementation and Reproducibility\nReferences.\n1. INTRODUCTION\nParkinson’s disease is a neurological disorder associated with progressive changes in movement and other functions. Speech can be affected through alterations in phonation, articulation, loudness and temporal characteristics. Because these changes can be quantified from recordings, speech analysis has become an active area of machine-learning research.\nThe core objective of this project is to build a reproducible binary classifier that maps speech-derived acoustic measurements to two classes: healthy and Parkinson’s disease. The project is not intended to replace a clinician or to establish a medical diagnosis. Instead, it demonstrates the engineering and analytical workflow needed to investigate a voice-based machine-learning biomarker.\nThe supplied project format emphasizes title, abstract, keywords, introduction, literature survey, methodology, experiments, comparisons, limitations, conclusion and references. This expanded report follows that structure while adding deeper technical discussion, model architecture, evaluation design, reproducibility guidance and responsible-use considerations.\n1.1 Motivation\nTraditional diagnosis depends on clinical examination and specialist assessment. A computational speech system could potentially support screening or remote monitoring by extracting measurable characteristics from voice. The appeal of such systems lies in their non-invasive nature and the possibility of frequent measurements. However, real-world use requires careful validation because speech is influenced by many factors beyond disease status.\n1.2 Scope\nThe scope covers pre-extracted speech/acoustic features, binary classification, an MLP neural network, baseline comparison, visual analysis and discussion of generalization. Raw waveform end-to-end modelling is identified as future work.\n2. PROBLEM STATEMENT AND OBJECTIVES\nProblem statement: Given a vector of speech-derived acoustic measurements from a participant, develop a neural-network model capable of distinguishing a Parkinson’s disease class from a healthy class under a carefully controlled evaluation protocol.\n2.1 Objectives\nStudy acoustic characteristics associated with Parkinson’s disease speech.\nPrepare a clean and standardized feature matrix for neural-network learning.\nDesign a compact multilayer perceptron suitable for a small tabular dataset.\nUse leakage-aware evaluation and report several complementary metrics.\nCompare the neural network conceptually with classical machine-learning baselines.\nIdentify limitations that prevent direct interpretation as a clinical diagnostic system.\nProvide a reproducible implementation plan for a BTech-level project.\n3. BACKGROUND AND LITERATURE SURVEY\nResearch on Parkinson’s speech analysis spans statistical signal processing, classical machine learning and modern deep learning. Early work demonstrated that dysphonia measurements could be investigated for remote monitoring. Later studies explored classifiers such as support vector machines, decision trees, random forests and neural networks.\nRecent reviews show increasing interest in deep-learning approaches, including CNN, RNN/LSTM/GRU and transformer-based models. At the same time, systematic reviews repeatedly identify dataset heterogeneity, small participant counts, inconsistent validation and limited external testing as major barriers to reliable comparison.\nWork / Resource\nApproach\nContribution\nLimitation\nOxford PD Speech Dataset\nAcoustic feature classification\nAccessible benchmark for PD vs healthy classification\nSmall participant pool; repeated recordings\nNeural-network scoping review\nANN/DNN/CNN/RNN/autoencoder approaches\nMaps neural-network applications\nStudies use heterogeneous datasets\nRecent voice ML/DL reviews\nSVM, RF, CNN, RNN, transformers\nBroad state-of-the-art overview\nValidation and datasets vary\nParkinson’s Speech Multiple Sound Recordings\nMultiple recording types\nBroader speech-condition coverage\nMore complex experimental design\n4. DATASET AND SPEECH FEATURES\nThe primary benchmark is the Oxford Parkinson’s Disease Detection Dataset from the UCI Machine Learning Repository. UCI describes it as a multivariate dataset containing 197 instances and 22 features, collected from 31 people, of whom 23 had Parkinson’s disease. The target status distinguishes healthy and Parkinson’s classes.\nAttribute\nDescription\nDataset\nOxford Parkinson’s Disease Detection Dataset\nInstances\n197 reported by UCI\nParticipants\n31\nPD participants\n23\nFeatures\n22\nTarget\nstatus: healthy / Parkinson’s\nFeature type\nReal-valued acoustic measurements\n4.1 Acoustic Feature Groups\nFeature group\nExamples\nPurpose\nFundamental frequency\nMDVP:Fo, MDVP:Fhi, MDVP:Flo\nPitch-related measurements\nJitter\nJitter, RAP, PPQ, DDP\nFrequency variation\nShimmer\nShimmer, APQ, DDA\nAmplitude variation\nNoise measures\nNHR, HNR\nNoise and harmonic characteristics\nNonlinear measures\nRPDE, DFA, D2\nComplexity and dynamical behavior\nOther variation measures\nspread1, spread2, PPE\nNonlinear pitch variation\nA key dataset issue is repeated observations: multiple recordings can be associated with the same participant. If recordings from one participant appear in both training and test partitions, the evaluation can be overly optimistic. Participant-aware splitting is therefore preferred whenever a participant identifier is available.\n5. PROPOSED METHODOLOGY\nThe proposed system follows a structured pipeline:\nStage\nProcess\nOutput\n1\nDataset acquisition\nRaw acoustic-feature table\n2\nData audit\nDimensions, labels, missing values and duplicates\n3\nFeature preparation\nPredictor matrix X and target y\n4\nScaling\nStandardized feature matrix\n5\nParticipant-aware partitioning\nTrain / validation / test data\n6\nModel training\nOptimized MLP parameters\n7\nPrediction\nPD probability and class\n8\nEvaluation\nMetrics and confusion matrix\n9\nInterpretation\nError analysis and limitations\nPreprocessing\nRemove identifier fields from the predictive matrix.\nCheck missing values and invalid numeric entries.\nInspect class distribution.\nFit the scaler only on the training partition.\nApply the same fitted transformation to validation and test data.\nKeep recordings from the same participant together whenever participant identifiers permit.\n5.2 Mathematical Formulation\nFor an input vector x, a dense layer computes z = Wx + b. A ReLU hidden layer uses f(z) = max(0,z). The final sigmoid layer computes p = 1/(1+e^-z), where p represents the estimated probability of the positive class. Binary cross-entropy can be written as L = -[y log(p) + (1-y) log(1-p)].\n6. NEURAL NETWORK ARCHITECTURE\nLayer\nConfiguration\nFunction\nInput\n22 features\nReceives standardized acoustic measurements\nDense 1\n64 neurons, ReLU\nLearns nonlinear combinations\nDropout\n0.20\nRegularization\nDense 2\n32 neurons, ReLU\nLearns higher-level representation\nDropout\n0.20\nRegularization\nOutput\n1 neuron, sigmoid\nBinary probability\n6.1 Training Strategy\nA practical training configuration uses Adam optimization with binary cross-entropy. Early stopping based on validation loss can prevent unnecessary training after generalization performance stops improving. The final implementation should record the exact learning rate, batch size, number of epochs, dropout rate, random seed and stopping criterion.\n6.2 Why an MLP?\nThe selected data are tabular, pre-extracted acoustic measurements rather than sequential raw waveforms. An MLP is therefore a technically appropriate neural architecture for demonstrating nonlinear classification without introducing the additional complexity of spectrogram generation or sequence modelling.\n6.3 Regularization\nBecause the dataset is small, regularization is important. Dropout, early stopping, modest network depth and careful validation can reduce overfitting. Cross-validation can also be considered, provided that folds are created at the participant level.\n7. EXPERIMENTAL DESIGN\nThe experiment should use a held-out test set that is not used for model selection. If participant identifiers are available, all recordings from a participant must remain in one partition. Hyperparameters should be selected using training/validation data only.\n7.1 Evaluation Metrics\nMetric\nDefinition\nWhy it matters\nAccuracy\nCorrect predictions / all predictions\nOverall classification performance\nPrecision\nTP / (TP+FP)\nControls false-positive burden\nRecall\nTP / (TP+FN)\nMeasures sensitivity to PD class\nSpecificity\nTN / (TN+FP)\nMeasures correct healthy classification\nF1-score\n2PR/(P+R)\nBalances precision and recall\nROC-AUC\nArea under ROC curve\nThreshold-independent ranking quality\n7.2 Experimental Controls\nUse the same test partition for every baseline.\nApply preprocessing consistently.\nDo not tune on the test set.\nReport confidence intervals or repeated-fold variation when feasible.\nRecord software versions and random seeds.\nKeep illustrative numbers separate from actual measured results.\n8. RESULTS AND ANALYSIS\nThe following visualizations are intentionally marked as illustrative. They demonstrate how the final report can present training curves, model comparison, confusion-matrix analysis and feature influence. They are not claims about experimentally measured performance on the dataset.\nFigure 1. Illustrative training and validation loss. A rising validation loss while training loss continues to fall can indicate overfitting.\nFigure 2. Illustrative accuracy comparison across baseline and neural-network approaches.\n8.1 Confusion Matrix Analysis\nFigure 3. Illustrative confusion matrix. Replace values with predictions from the held-out test set.\nFor the illustrative matrix, the diagonal entries represent correct classifications while the off-diagonal entries represent errors. In the final experiment, the matrix should be accompanied by precision, recall, specificity and F1-score so that class-specific behavior is transparent.\n8.2 Feature Influence\nFigure 4. Illustrative feature-influence ranking. This is a demonstration graphic, not an explanation of the trained model.\nFeature influence should be computed using an appropriate explainability method such as permutation importance or SHAP after the model has been trained. The method and its limitations should be reported. Feature importance should not be interpreted as causal evidence that a particular voice characteristic causes Parkinson’s disease.\n9. COMPARISON WITH EXISTING TECHNIQUES\nTechnique\nStrengths\nWeaknesses\nRole in project\nLogistic Regression\nSimple and interpretable\nLinear boundary\nBaseline\nSVM\nStrong on small datasets\nKernel/parameter selection\nClassical baseline\nRandom Forest\nNonlinear and robust\nLess compact explanation\nTree baseline\nMLP\nNonlinear feature interactions\nCan overfit small datasets\nProposed model\nCNN\nLearns local patterns\nNeeds suitable image/time-frequency input\nFuture extension\nLSTM/GRU\nModels sequences\nHigher complexity and data needs\nFuture extension\nTransformer\nPowerful representation learning\nComputational and data demands\nFuture extension\nThe appropriate conclusion is not that neural networks always outperform classical algorithms. Instead, the neural network is a proposed nonlinear learner whose value must be established under the same data split and evaluation protocol as the baselines.\n9.1 Ablation Studies\nAn advanced version of the project can compare: no dropout vs dropout; standardized vs unstandardized inputs; 1 vs 2 hidden layers; different hidden sizes; and participant-aware vs row-level splitting. Such ablations help identify which design choices materially affect performance.\n10. LIMITATIONS, ETHICS AND CHALLENGES\nSmall sample size\nThe benchmark is relatively small at the participant level. Neural networks can overfit such data.\nParticipant leakage\nRepeated recordings from the same person can inflate test performance if splitting is performed at row level.\nRecording variability\nMicrophone, room acoustics, language, speaking task and background noise can change acoustic features.\nClinical variability\nDisease severity, medication state and co-existing conditions can influence speech.\nGeneralization\nPerformance on one benchmark does not establish performance in hospitals or community populations.\nInterpretability\nA classification probability is not itself a clinical explanation.\nPrivacy\nVoice recordings can be personally identifying and must be handled with appropriate consent and security.\nFairness\nModels should be evaluated across relevant demographic and linguistic groups where data permit.\nResponsible-use statement: This project is an academic research prototype. It should not be used to diagnose, exclude, or make treatment decisions about an individual without appropriate clinical validation and oversight.\n11. CONCLUSION AND FUTURE SCOPE\nThis project presents an advanced neural-network framework for Parkinson’s disease detection from speech-derived acoustic measurements. It integrates data preprocessing, leakage-aware validation, MLP architecture, regularization, multi-metric evaluation, baseline comparison and responsible interpretation.\nThe principal engineering lesson is that reliable evaluation is as important as model architecture. On small biomedical datasets, a high training score can be misleading. Participant-aware splitting, independent testing, repeated validation and transparent reporting are essential.\n11.1 Future Scope\nUse larger multi-centre speech datasets.\nEvaluate raw audio and spectrogram-based CNN models.\nInvestigate LSTM/GRU and transformer-based speech representations.\nStudy multilingual and cross-device generalization.\nDevelop explainable and calibrated predictions.\nPerform external validation on an independent cohort.\nInvestigate longitudinal speech monitoring rather than single-session classification.\nEvaluate robustness to background noise and recording-device changes.\n12. IMPLEMENTATION AND REPRODUCIBILITY\nComponent\nRecommended choice\nProgramming language\nPython\nData handling\nPandas, NumPy\nPreprocessing\nScikit-learn StandardScaler\nNeural network\nTensorFlow/Keras or PyTorch\nEvaluation\nScikit-learn\nVisualization\nMatplotlib\nExperiment tracking\nCSV/JSON logs or MLflow\nVersion control\nGit\nEnvironment\nPython virtual environment / requirements file\n12.1 Recommended Project Structure\ndata/ — dataset files and metadata\nsrc/ — preprocessing, model and evaluation scripts\nnotebooks/ — exploratory analysis\nmodels/ — saved trained models\nfigures/ — generated charts\nreports/ — final report and result tables\nREADME.md — setup and reproduction instructions\n12.2 Reproducibility Checklist\nDataset name and version\nExact feature list\nParticipant-level split strategy\nRandom seed\nScaler parameters learned from training data\nNetwork architecture\nOptimizer and learning rate\nBatch size and epochs\nEarly-stopping criterion\nAll evaluation metrics\nSoftware/library versions\nREFERENCES\n[1] Little, M. A. (2007). Parkinsons. UCI Machine Learning Repository. DOI: 10.24432/C59C74.\n[2] Little, M. A., McSharry, P. E., Hunter, E. J., & Ramig, L. O. (2008). Suitability of dysphonia measurements for telemonitoring of Parkinson’s disease. IEEE Transactions on Biomedical Engineering.\n[3] Tsanas, A., & Little, M. (2009). Parkinsons Telemonitoring. UCI Machine Learning Repository. DOI: 10.24432/C5ZS3N.\n[4] Sakar, C. O., Serbes, G., Gunduz, A., Nizam, H., Sakar, B. E., Tutuncu, M., Aydin, T., Isenkul, M. E., & Apaydin, H. (2019). A comparative analysis of speech signal processing algorithms for Parkinson’s disease classification and the use of the UCI Parkinson’s dataset.\n[5] Sakar, C. O. et al. (2018). Parkinson’s Disease Classification. UCI Machine Learning Repository. DOI: 10.24432/C5MS4X.\n[6] UCI Machine Learning Repository. Parkinson’s Speech with Multiple Types of Sound Recordings. Dataset documentation.\n[7] UCI Machine Learning Repository. Parkinson Dataset with replicated acoustic features. Dataset documentation.\n[8] Review literature on neural-network approaches for Parkinson’s disease detection from speech and voice.\n[9] Recent systematic reviews of voice-based machine learning and deep learning approaches for Parkinson’s disease detection.",
+      "researchObjective": "",
+      "academicDomain": "Computer Science & AI",
+      "depth": "In-Depth Analysis",
+      "responseStyle": "Academic & Formal",
+      "createdAt": "2026-10-13T11:25:32.138Z",
+      "updatedAt": "2026-10-13T11:26:06.279Z",
+      "status": "completed",
+      "chatHistory": [
+        {
+          "id": "msg_1791890766279_u",
+          "role": "user",
+          "content": "which topic is realted to AI",
+          "timestamp": "2026-10-13T11:26:06.279Z"
+        },
+        {
+          "id": "msg_1791890766279_a",
+          "role": "assistant",
+          "content": "Regarding \"which topic is realted to AI\" for your research in \"PARKINSON’S DISEASE DETECTION FROM SPEECH\":\n\nKey considerations for your research design:\n1. **Methodological Rigor**: Establish clear baseline benchmarks before introducing novel complex architectures.\n2. **Evaluation Metrics**: Report Balanced Accuracy, Area Under the ROC Curve (AUC-ROC), and F1-score rather than raw accuracy, especially if classes are imbalanced.\n3. **Ablation Studies**: Systematically verify which feature representations and loss components are genuinely driving performance improvements.",
+          "timestamp": "2026-10-13T11:26:06.279Z"
+        }
+      ],
+      "report": {
+        "topicOverview": "This research investigation addresses \"PARKINSON’S DISEASE DETECTION FROM SPEECH\". Within Computer Science & AI, understanding theoretical formulations, signal representations, and operational constraints is essential for designing resilient computational solutions. Recent academic research indicates that bridging the gap between theoretical architectures and real-world deployment requires rigorous evaluation against non-stationary distributions, multi-modal features, and hardware limits.",
+        "keyConcepts": [
+          {
+            "concept": "Multilayer Perceptron (MLP) Pipeline",
+            "explanation": "Computational learning architecture tailored for feature extraction, representation learning, and predictive inference in Computer Science & AI."
+          },
+          {
+            "concept": "Speech Acoustic Measurements",
+            "explanation": "Parametric representations capturing salient target signals while filtering out ambient noise or physiological variation."
+          },
+          {
+            "concept": "Leakage-Aware Evaluation",
+            "explanation": "Partitioning strategy (such as Leave-One-Subject-Out or participant-level splitting) preventing overly optimistic performance estimates from repeated observations."
+          },
+          {
+            "concept": "Cross-Validation & Regularization",
+            "explanation": "Regularization strategies (e.g. dropout, early stopping, and weight decay) preventing overparameterized models from memorizing small cohort datasets."
+          }
+        ],
+        "researchBackground": "Historically, inquiries into parkinson’s disease detection from speech relied heavily on hand-crafted heuristics and statistical feature engineering. The emergence of modern neural architectures, self-supervised representations, and automated feature extractors has substantially boosted classification benchmarks. However, critical challenges persist regarding cohort diversity, recording consistency, interpretability, and robustness in real-world environments.",
+        "existingApproaches": [
+          {
+            "approach": "Classical Classifiers (Convolutional Neural Networks (CNN))",
+            "pros": "Highly interpretable, computationally lightweight, transparent decision boundaries on small sample sizes.",
+            "cons": "Limited capacity to capture high-order non-linear interactions across diverse subject cohorts."
+          },
+          {
+            "approach": "Dense Deep Neural Architectures (Multilayer Perceptron (MLP))",
+            "pros": "Automated non-linear representation learning from standardized feature matrices without manual rule authoring.",
+            "cons": "Susceptible to overfitting on small participant cohorts; requires rigorous regularization and early stopping."
+          },
+          {
+            "approach": "Hybrid & Multi-Modal Feature Models",
+            "pros": "Combines pre-extracted domain biomarkers with learned continuous representations for balanced sensitivity.",
+            "cons": "Higher architectural complexity and increased sensitivity to missing or corrupted sensor channels."
+          }
+        ],
+        "methodologyAnalysis": "The standard methodological pipeline consists of signal acquisition, artifact filtering, feature standardization (e.g. z-score scaling fitted strictly on training partitions), followed by Multilayer Perceptron (MLP) training. Special care is required for validation schemes to ensure all recordings from a given participant remain exclusively in either the train or test set, preventing subtle data leakage.",
+        "currentChallenges": [
+          "Participant-level data leakage from repeated subject recordings across train-test splits",
+          "Constrained participant cohort size increasing susceptibility to overfitting",
+          "Acoustic, environmental, and recording-hardware variability across acquisition setups",
+          "Translational gap between academic classification benchmarks and real-world clinical decision-making"
+        ],
+        "potentialResearchGaps": [
+          {
+            "title": "Leakage-Resilient Subject-Level Validation for PARKINSON’S DISEASE DETECTION FROM SPEECH",
+            "description": "Many benchmark studies evaluate Multilayer Perceptron (MLP) models with row-level shuffling, artificially inflating accuracy by allowing repeated participant recordings to span train and test sets.",
+            "gapType": "methodological",
+            "urgency": "High"
+          },
+          {
+            "title": "Cross-Device Hardware Robustness on Oxford Parkinson's Disease Detection Dataset",
+            "description": "Existing models degrade significantly when evaluated on hardware or cohorts differing from the training distribution. Lack of lightweight unsupervised calibration frameworks.",
+            "gapType": "dataset",
+            "urgency": "High"
+          },
+          {
+            "title": "Interpretable Biomarker Attribution Networks",
+            "description": "Black-box neural networks lack transparent feature attribution explaining which exact feature parameters or temporal segments drove the classification decision.",
+            "gapType": "theoretical",
+            "urgency": "Medium"
+          }
+        ],
+        "researchQuestions": [
+          "How does Multilayer Perceptron (MLP) performance compare to Convolutional Neural Networks (CNN) under strict participant-isolated cross-validation?",
+          "What data augmentation and contrastive learning techniques best mitigate device-specific recording bias?",
+          "Can self-supervised pre-training transfer effectively to specialized Computer Science & AI tasks with small cohort benchmarks?"
+        ],
+        "potentialContributions": [
+          "A reproducible benchmark pipeline with strict subject isolation to prevent optimistic data leakage.",
+          "A lightweight regularized architecture with post-hoc feature attribution verified by domain specialists.",
+          "Empirical comparative analysis evaluating trade-offs between model complexity, latency, and out-of-distribution robustness."
+        ],
+        "recommendedMethodologies": [
+          "Employ Leave-One-Subject-Out (LOSO) cross-validation to guarantee strict participant partition.",
+          "Apply standard scaling derived solely from training folds to avoid lookahead contamination.",
+          "Deploy SHAP or permutation importance for rigorous post-hoc biomarker attribution."
+        ],
+        "relatedResearchPapers": [
+          {
+            "title": "Deep 1D-Convnet for accurate Parkinson disease detection and severity prediction from gait",
+            "authors": [
+              "Imanne El Maachi",
+              "Guillaume-Alexandre Bilodeau",
+              "Wassim Bouachir"
+            ],
+            "year": 2019,
+            "source": "arXiv.org",
+            "url": "http://arxiv.org/abs/1910.11509v4",
+            "abstractExcerpt": "Diagnosing Parkinson's disease is a complex task that requires the evaluation of several motor and non-motor symptoms. During diagnosis, gait abnormalities are among the important symptoms that physicians should consider...",
+            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
+          },
+          {
+            "title": "Supervised Speech Representation Learning for Parkinson's Disease Classification",
+            "authors": [
+              "Parvaneh Janbakhshi",
+              "Ina Kodrasi"
+            ],
+            "year": 2021,
+            "source": "arXiv.org",
+            "url": "http://arxiv.org/abs/2106.00531v2",
+            "abstractExcerpt": "Recently proposed automatic pathological speech classification techniques use unsupervised auto-encoders to obtain a high-level abstract representation of speech. Since these representations are learned based on reconstr...",
+            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
+          },
+          {
+            "title": "A Three-groups Non-local Model for Combining Heterogeneous Data Sources to Identify Genes Associated with Parkinson's Disease",
+            "authors": [
+              "Troy P. Wixson",
+              "Benjamin A. Shaby",
+              "Daisy L. Philtron",
+              "International Parkinson Disease Genomics Consortium",
+              "Leandro A. Lima",
+              "Stacia K. Wyman",
+              "Julia A. Kaye",
+              "Steven Finkbeiner"
+            ],
+            "year": 2024,
+            "source": "arXiv.org",
+            "url": "http://arxiv.org/abs/2406.05262v2",
+            "abstractExcerpt": "We seek to identify genes involved in Parkinson's Disease (PD) by combining information across different experiment types. Each experiment, taken individually, may contain too little information to distinguish some impor...",
+            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
+          },
+          {
+            "title": "Parkinson Disease Detection from Speech Articulation Neuromechanics",
+            "authors": [
+              "Pedro Gómez‐Vilda",
+              "Jiří Mekyska",
+              "José Manuel Ferrández Vicente",
+              "Daniel Palacios Alonso"
+            ],
+            "year": 2017,
+            "source": "OpenAlex Index",
+            "url": "https://doi.org/10.3389/fninf.2017.00056",
+            "abstractExcerpt": "Aim: The research described is intended to give a description of articulation dynamics as a correlate of the kinematic behavior of the jaw-tongue biomechanical system, encoded as a probability distribution of an absolute...",
+            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
+          },
+          {
+            "title": "Detection and Forecasting of Parkinson Disease Progression from Speech Signal Features Using MultiLayer Perceptron and LSTM",
+            "authors": [
+              "Ali, Majid",
+              "Hina Shakir",
+              "Asia Samreen",
+              "Sohaib Ahmed"
+            ],
+            "year": 2024,
+            "source": "arXiv.org",
+            "url": "https://doi.org/10.48550/arxiv.2412.18248",
+            "abstractExcerpt": "Accurate diagnosis of Parkinson disease, especially in its early stages, can be a challenging task. The application of machine learning techniques helps improve the diagnostic accuracy of Parkinson disease detection but ...",
+            "relevanceReason": "Provides direct empirical baseline and methodology in Computer Science & AI."
+          }
+        ],
+        "furtherReading": [
+          {
+            "title": "Benchmark Survey on Machine Learning in Computer Science & AI",
+            "type": "Survey",
+            "linkOrReference": "Academic Literature Index 2024"
+          },
+          {
+            "title": "Guidelines for Reproducible Machine Learning in Healthcare & Sensing",
+            "type": "Methodology Guide",
+            "linkOrReference": "Nature Machine Intelligence"
+          }
+        ],
+        "verifiedVsHypotheses": {
+          "verifiedFacts": [
+            "Data leakage from improper train-test partitioning frequently yields over-optimistic validation accuracy in published literature.",
+            "Acoustic and environmental sensor variability introduces non-trivial distribution shift across recording devices."
+          ],
+          "aiInterpretations": [
+            "Self-supervised representation learning can likely bridge demographic variance better than purely supervised shallow baselines.",
+            "Compact regularized neural architectures offer an optimal trade-off between parameter efficiency and accuracy on small tabular biomedical datasets."
+          ],
+          "untestedHypotheses": [
+            "Device-invariant contrastive regularization can reduce cross-sensor performance drops below 5% without requiring labelled target calibration."
+          ]
+        },
+        "generatedAt": "2026-10-13T11:25:33.590Z"
+      }
+    }
+  ],
   "gaps": [],
   "comparisons": [],
-  "executionLogs": [],
-  "notifications": [],
+  "executionLogs": [
+    {
+      "id": "exec_1791891629959_cbd7d9",
+      "workflowKey": "workflow_b_paper_discovery",
+      "workflowName": "Workflow B: Automatic Research Paper Discovery",
+      "jobId": "job_1791891629959_0e573bfb",
+      "triggeredBy": "system_event",
+      "startedAt": "2026-10-13T11:40:29.959Z",
+      "status": "completed",
+      "retryCount": 1,
+      "inputPayload": {
+        "triggeredManually": true,
+        "source": "ResearchLens Automation Center UI",
+        "isRetry": true
+      },
+      "executionMode": "local_fallback",
+      "outputResult": {
+        "status": "success",
+        "workflow": "workflow_b_paper_discovery",
+        "engine": "autonomous_local_discovery",
+        "topic": "Medical AI & Brain MRI Tumor Segmentation",
+        "discoveredCount": 5,
+        "samplePapers": [
+          {
+            "title": "Efficient embedding network for 3D brain tumor segmentation",
+            "authors": [
+              "Hicham Messaoudi",
+              "Ahror Belaid",
+              "Mohamed Lamine Allaoui",
+              "Ahcene Zetout",
+              "Mohand Said Allili",
+              "Souhil Tliba",
+              "Douraied Ben Salem",
+              "Pierre-Henri Conze"
+            ],
+            "year": 2020,
+            "url": "http://arxiv.org/abs/2011.11052v1"
+          },
+          {
+            "title": "3D Kidneys and Kidney Tumor Semantic Segmentation using Boundary-Aware Networks",
+            "authors": [
+              "Andriy Myronenko",
+              "Ali Hatamizadeh"
+            ],
+            "year": 2019,
+            "url": "http://arxiv.org/abs/1909.06684v1"
+          },
+          {
+            "title": "MBDRes-U-Net: Multi-Scale Lightweight Brain Tumor Segmentation Network",
+            "authors": [
+              "Longfeng Shen",
+              "Yanqi Hou",
+              "Jiacong Chen",
+              "Liangjin Diao",
+              "Yaxi Duan"
+            ],
+            "year": 2024,
+            "url": "http://arxiv.org/abs/2411.01896v1"
+          }
+        ],
+        "executedAt": "2026-10-13T11:40:31.339Z",
+        "message": "Workflow B successfully queried academic repositories. Discovered 5 matching papers."
+      },
+      "completedAt": "2026-10-13T11:40:31.340Z"
+    },
+    {
+      "id": "exec_1791890493289_f16326",
+      "workflowKey": "workflow_b_paper_discovery",
+      "workflowName": "Workflow B: Automatic Research Paper Discovery",
+      "jobId": "job_1791890493288_273e35c9",
+      "triggeredBy": "system_event",
+      "startedAt": "2026-10-13T11:21:33.289Z",
+      "status": "completed",
+      "retryCount": 1,
+      "inputPayload": {
+        "triggeredManually": true,
+        "source": "ResearchLens Automation Center UI",
+        "isRetry": true
+      },
+      "executionMode": "local_fallback",
+      "outputResult": {
+        "status": "success",
+        "workflow": "workflow_b_paper_discovery",
+        "engine": "autonomous_local_discovery",
+        "topic": "Medical AI & Brain MRI Tumor Segmentation",
+        "discoveredCount": 5,
+        "samplePapers": [
+          {
+            "title": "Efficient embedding network for 3D brain tumor segmentation",
+            "authors": [
+              "Hicham Messaoudi",
+              "Ahror Belaid",
+              "Mohamed Lamine Allaoui",
+              "Ahcene Zetout",
+              "Mohand Said Allili",
+              "Souhil Tliba",
+              "Douraied Ben Salem",
+              "Pierre-Henri Conze"
+            ],
+            "year": 2020,
+            "url": "http://arxiv.org/abs/2011.11052v1"
+          },
+          {
+            "title": "3D Kidneys and Kidney Tumor Semantic Segmentation using Boundary-Aware Networks",
+            "authors": [
+              "Andriy Myronenko",
+              "Ali Hatamizadeh"
+            ],
+            "year": 2019,
+            "url": "http://arxiv.org/abs/1909.06684v1"
+          },
+          {
+            "title": "MBDRes-U-Net: Multi-Scale Lightweight Brain Tumor Segmentation Network",
+            "authors": [
+              "Longfeng Shen",
+              "Yanqi Hou",
+              "Jiacong Chen",
+              "Liangjin Diao",
+              "Yaxi Duan"
+            ],
+            "year": 2024,
+            "url": "http://arxiv.org/abs/2411.01896v1"
+          }
+        ],
+        "executedAt": "2026-10-13T11:21:34.638Z",
+        "message": "Workflow B successfully queried academic repositories. Discovered 5 matching papers."
+      },
+      "completedAt": "2026-10-13T11:21:34.638Z"
+    },
+    {
+      "id": "exec_1791890480680_53a185",
+      "workflowKey": "workflow_b_paper_discovery",
+      "workflowName": "Workflow B: Automatic Research Paper Discovery",
+      "jobId": "job_1791890480679_bb089320",
+      "triggeredBy": "system_event",
+      "startedAt": "2026-10-13T11:21:20.680Z",
+      "status": "completed",
+      "retryCount": 0,
+      "inputPayload": {
+        "topic": "Medical AI Tumor Segmentation",
+        "forceLocal": true
+      },
+      "executionMode": "local_fallback",
+      "outputResult": {
+        "status": "success",
+        "workflow": "workflow_b_paper_discovery",
+        "engine": "autonomous_local_discovery",
+        "topic": "Medical AI Tumor Segmentation",
+        "discoveredCount": 5,
+        "samplePapers": [
+          {
+            "title": "3D Kidneys and Kidney Tumor Semantic Segmentation using Boundary-Aware Networks",
+            "authors": [
+              "Andriy Myronenko",
+              "Ali Hatamizadeh"
+            ],
+            "year": 2019,
+            "url": "http://arxiv.org/abs/1909.06684v1"
+          },
+          {
+            "title": "Efficient embedding network for 3D brain tumor segmentation",
+            "authors": [
+              "Hicham Messaoudi",
+              "Ahror Belaid",
+              "Mohamed Lamine Allaoui",
+              "Ahcene Zetout",
+              "Mohand Said Allili",
+              "Souhil Tliba",
+              "Douraied Ben Salem",
+              "Pierre-Henri Conze"
+            ],
+            "year": 2020,
+            "url": "http://arxiv.org/abs/2011.11052v1"
+          },
+          {
+            "title": "End-to-End Cascaded U-Nets with a Localization Network for Kidney Tumor Segmentation",
+            "authors": [
+              "Minh H. Vu",
+              "Guus Grimbergen",
+              "Attila Simkó",
+              "Tufve Nyholm",
+              "Tommy Löfstedt"
+            ],
+            "year": 2019,
+            "url": "http://arxiv.org/abs/1910.07521v1"
+          }
+        ],
+        "executedAt": "2026-10-13T11:21:22.589Z",
+        "message": "Workflow B successfully queried academic repositories. Discovered 5 matching papers."
+      },
+      "completedAt": "2026-10-13T11:21:22.589Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_1791891631338",
+      "userId": "usr_default",
+      "title": "Automated Literature Discovery (Workflow B)",
+      "message": "Discovered 5 verified academic papers on \"Medical AI & Brain MRI Tumor Segmentation\" from arXiv & OpenAlex.",
+      "type": "info",
+      "category": "discovery",
+      "read": false,
+      "createdAt": "2026-10-13T11:40:31.338Z"
+    },
+    {
+      "id": "notif_1791890853511",
+      "userId": "usr_default",
+      "title": "Paper Processed & Indexed",
+      "message": "Successfully extracted and analyzed \"NeuroVision: An Automated Brain MRI Tumor Seg\"",
+      "type": "success",
+      "category": "paper",
+      "read": false,
+      "createdAt": "2026-10-13T11:27:33.511Z",
+      "actionUrl": "/papers/paper_1791890852932_4z9g58"
+    },
+    {
+      "id": "notif_1791890733591",
+      "userId": "usr_default",
+      "title": "Context Exploration Ready",
+      "message": "Completed analysis for \"PARKINSON’S DISEASE DETECTION FROM SPEECH...\"",
+      "type": "success",
+      "category": "discovery",
+      "read": false,
+      "createdAt": "2026-10-13T11:25:33.591Z",
+      "actionUrl": "/context?session=sess_1791890731139_70xy2o"
+    },
+    {
+      "id": "notif_1791890494637",
+      "userId": "usr_default",
+      "title": "Automated Literature Discovery (Workflow B)",
+      "message": "Discovered 5 verified academic papers on \"Medical AI & Brain MRI Tumor Segmentation\" from arXiv & OpenAlex.",
+      "type": "info",
+      "category": "discovery",
+      "read": false,
+      "createdAt": "2026-10-13T11:21:34.637Z"
+    },
+    {
+      "id": "notif_1791890482588",
+      "userId": "usr_default",
+      "title": "Automated Literature Discovery (Workflow B)",
+      "message": "Discovered 5 verified academic papers on \"Medical AI Tumor Segmentation\" from arXiv & OpenAlex.",
+      "type": "info",
+      "category": "discovery",
+      "read": false,
+      "createdAt": "2026-10-13T11:21:22.588Z"
+    },
+    {
+      "id": "notif_1791889390116",
+      "userId": "usr_default",
+      "title": "Paper Processed & Indexed",
+      "message": "Successfully extracted and analyzed \"NeuroVision: Automated Brain MRI Segmentation\"",
+      "type": "success",
+      "category": "paper",
+      "read": true,
+      "createdAt": "2026-10-13T11:03:10.116Z"
+    }
+  ],
   "subscriptions": [],
-  "revisions": []
+  "revisions": [
+    {
+      "id": "rev_1791891454559_p3b2pc",
+      "originalText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
+      "revisedText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
+      "mode": "Formal Academic",
+      "explanation": "Enhanced for Formal Academic. Streamlined redundant phrasing, improved syntactic precision, and reinforced scholarly tone.",
+      "createdAt": "2026-10-13T11:37:34.559Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1791890824281_l4161h",
+      "originalText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
+      "revisedText": "We once again express our sincere gratitude to the University and the concerned authorities for\ntheir continued support and cooperation.",
+      "mode": "Natural Academic",
+      "explanation": "Enhanced for Natural Academic. Streamlined redundant phrasing, improved syntactic precision, and reinforced scholarly tone.",
+      "createdAt": "2026-10-13T11:27:04.281Z",
+      "accepted": false
+    }
+  ]
 }

@@ -157,9 +157,29 @@ export const api = {
       body: JSON.stringify(payload || {}),
     }
   ),
-  retryExecutionLog: (logId: string) => fetchJson<{ executionLog: AutomationExecutionLog; result: any }>(
+  retryExecutionLog: (logId: string, forceLocal?: boolean) => fetchJson<{ executionLog: AutomationExecutionLog; result: any }>(
     `${BASE_URL}/automation/logs/${logId}/retry`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ forceLocal }),
+    }
+  ),
+  deleteAutomationLog: (logId: string) => fetchJson<{ success: boolean }>(
+    `${BASE_URL}/automation/logs/${logId}`,
+    { method: 'DELETE' }
+  ),
+  clearFailedAutomationLogs: () => fetchJson<{ success: boolean; clearedCount: number }>(
+    `${BASE_URL}/automation/logs/clear-failed`,
     { method: 'POST' }
+  ),
+  testN8nConnection: (webhookBaseUrl?: string) => fetchJson<{ success: boolean; status: number; message: string; hint?: string }>(
+    `${BASE_URL}/automation/test-connection`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webhookBaseUrl }),
+    }
   ),
   updateN8nConfig: (config: { webhookBaseUrl: string; webhookSecret: string; enabled: boolean }) =>
     fetchJson<{ config: any }>(`${BASE_URL}/automation/config`, {

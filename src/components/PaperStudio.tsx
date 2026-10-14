@@ -122,17 +122,21 @@ export const PaperStudio: React.FC<PaperStudioProps> = ({
     }
   };
 
-  const handleDeletePaper = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to remove this paper?')) return;
+  const handleDeletePaper = async (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Optimistic UI update so card disappears immediately
+    const remaining = papers.filter(p => p.id !== id);
+    if (selectedPaper?.id === id) {
+      setSelectedPaper(remaining[0] || null);
+    }
     try {
       await api.deletePaper(id);
       onRefreshPapers();
-      if (selectedPaper?.id === id) {
-        setSelectedPaper(papers.find(p => p.id !== id) || null);
-      }
     } catch (err) {
-      console.error('Delete paper error:', err);
+      console.warn('Delete paper error:', err);
     }
   };
 
@@ -266,11 +270,12 @@ export const PaperStudio: React.FC<PaperStudioProps> = ({
                       </div>
 
                       <button
+                        type="button"
                         onClick={(e) => handleDeletePaper(paper.id, e)}
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 transition-opacity"
+                        className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 p-2 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
                         title="Delete paper"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4 text-rose-400/80 hover:text-rose-400" />
                       </button>
                     </div>
 
@@ -324,20 +329,31 @@ export const PaperStudio: React.FC<PaperStudioProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <button
+                      type="button"
                       onClick={() => onOpenAiLikelihood(selectedPaper)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-600/20 text-amber-300 border border-amber-500/30 text-xs font-medium hover:bg-amber-600/30 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-600/20 text-amber-300 border border-amber-500/30 text-xs font-medium hover:bg-amber-600/30 transition-colors cursor-pointer"
                       title="Inspect AI Likelihood"
                     >
                       <ShieldAlert className="w-3.5 h-3.5" />
                       <span>AI Detector</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => onExport('paper', selectedPaper.id)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer"
                       title="Export report"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Export</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePaper(selectedPaper.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-300 text-xs font-medium transition-colors cursor-pointer"
+                      title="Delete this paper from library"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>

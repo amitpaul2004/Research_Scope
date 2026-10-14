@@ -265,6 +265,26 @@ class Database {
     }
   }
 
+  deleteExecutionLog(id: string): boolean {
+    const initialLen = this.data.executionLogs.length;
+    this.data.executionLogs = this.data.executionLogs.filter(l => l.id !== id);
+    if (this.data.executionLogs.length !== initialLen) {
+      this.saveToDisk();
+      return true;
+    }
+    return false;
+  }
+
+  clearFailedLogs(): number {
+    const initialLen = this.data.executionLogs.length;
+    this.data.executionLogs = this.data.executionLogs.filter(l => l.status !== 'failed');
+    const removed = initialLen - this.data.executionLogs.length;
+    if (removed > 0) {
+      this.saveToDisk();
+    }
+    return removed;
+  }
+
   // Notifications
   getNotifications(userId?: string): NotificationItem[] {
     if (!userId) return this.data.notifications;

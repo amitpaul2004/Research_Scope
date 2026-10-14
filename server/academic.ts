@@ -14,12 +14,29 @@ export interface NormalizedAcademicPaper {
   citationCount?: number;
 }
 
+function sanitizeQuery(raw: string): string {
+  if (!raw) return 'Machine Learning';
+  const lines = raw.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+  let best = lines[0] || '';
+  for (const line of lines) {
+    const cleaned = line.replace(/^(title|topic|subject|project report|abstract)[:\s—\-]+/i, '').trim();
+    if (cleaned.length > 10 && cleaned.length < 120 && !cleaned.toLowerCase().startsWith('department') && !cleaned.toLowerCase().startsWith('submitted in') && !cleaned.toLowerCase().startsWith('name:')) {
+      best = cleaned;
+      break;
+    }
+  }
+  const words = best.replace(/[^\w\s-]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+  const trimmed = words.slice(0, 10).join(' ');
+  return trimmed || 'Machine Learning';
+}
+
 /**
  * Search arXiv using official public Atom API
  */
 export async function searchArxiv(query: string, maxResults: number = 5): Promise<NormalizedAcademicPaper[]> {
   try {
-    const encoded = encodeURIComponent(query);
+    const clean = sanitizeQuery(query);
+    const encoded = encodeURIComponent(clean);
     const url = `http://export.arxiv.org/api/query?search_query=all:${encoded}&start=0&max_results=${maxResults}&sortBy=relevance&sortOrder=descending`;
     
     const response = await fetch(url, {
@@ -78,7 +95,8 @@ export async function searchArxiv(query: string, maxResults: number = 5): Promis
  */
 export async function searchOpenAlex(query: string, maxResults: number = 5): Promise<NormalizedAcademicPaper[]> {
   try {
-    const encoded = encodeURIComponent(query);
+    const clean = sanitizeQuery(query);
+    const encoded = encodeURIComponent(clean);
     const url = `https://api.openalex.org/works?search=${encoded}&per-page=${maxResults}`;
 
     const response = await fetch(url, {

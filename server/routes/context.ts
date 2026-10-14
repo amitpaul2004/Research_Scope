@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { analyzeResearchContext, askContextFollowUp } from '../gemini';
+import { analyzeResearchContext, askContextFollowUp, extractCleanTitle } from '../gemini';
 import { searchLiterature } from '../academic';
 import { dispatchWorkflowEvent } from '../n8nService';
 import { ResearchContextSession } from '../types';
@@ -17,7 +17,7 @@ router.post('/analyze', async (req, res) => {
       additionalContext,
       researchObjective,
       academicDomain,
-      depth = 'Standard Analysis',
+      depth = 'In-Depth Analysis',
       responseStyle = 'Academic & Formal',
     } = req.body;
 
@@ -27,13 +27,15 @@ router.post('/analyze', async (req, res) => {
       });
     }
 
+    const rawInput = topicOrQuestion.trim();
+    const cleanTitle = extractCleanTitle(rawInput);
     const user = db.getCurrentUser();
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // 1. Retrieve legitimate academic literature from OpenAlex and arXiv
     let retrievedPapers: any[] = [];
     try {
-      retrievedPapers = await searchLiterature(topicOrQuestion, 6);
+      retrievedPapers = await searchLiterature(cleanTitle, 6);
     } catch (e) {
       console.warn('Academic search in context analysis had a warning:', e);
     }
@@ -42,10 +44,12 @@ router.post('/analyze', async (req, res) => {
     const newSession: ResearchContextSession = {
       id: sessionId,
       userId: user.id,
-      topicOrQuestion: topicOrQuestion.trim(),
-      additionalContext: additionalContext?.trim(),
+      topicOrQuestion: cleanTitle,
+      additionalContext: rawInput.length > cleanTitle.length
+        ? (additionalContext ? `${additionalContext}\n\n${rawInput}` : rawInput)
+        : additionalContext?.trim(),
       researchObjective: researchObjective?.trim(),
-      academicDomain: academicDomain?.trim() || 'Interdisciplinary Science',
+      academicDomain: academicDomain?.trim() || 'Computer Science & AI',
       depth,
       responseStyle,
       createdAt: new Date().toISOString(),
@@ -58,14 +62,14 @@ router.post('/analyze', async (req, res) => {
     // 3. Dispatch n8n event for background coordination / logging
     await dispatchWorkflowEvent('workflow_l_assistant_tasks', {
       sessionId,
-      topic: topicOrQuestion,
+      topic: cleanTitle,
       academicDomain,
       depth,
     });
 
-    // 4. Generate structured report using Gemini
+    // 4. Generate structured report using Gemini (with autonomous literature synthesis fallback)
     const report: any = await analyzeResearchContext({
-      topicOrQuestion,
+      topicOrQuestion: rawInput,
       additionalContext,
       researchObjective,
       academicDomain,
@@ -87,7 +91,6 @@ router.post('/analyze', async (req, res) => {
 
     // Merge retrieved real papers if Gemini report missed url/doi
     if (report && report.relatedResearchPapers && retrievedPapers.length > 0) {
-      // augment with verified source data
       retrievedPapers.forEach((verified) => {
         if (!report.relatedResearchPapers.some((r: any) => r.title.toLowerCase() === verified.title.toLowerCase())) {
           report.relatedResearchPapers.push({
@@ -115,7 +118,7 @@ router.post('/analyze', async (req, res) => {
       id: `notif_${Date.now()}`,
       userId: user.id,
       title: 'Context Exploration Ready',
-      message: `Completed analysis for "${topicOrQuestion.slice(0, 45)}..."`,
+      message: `Completed analysis for "${cleanTitle.slice(0, 45)}..."`,
       type: 'success',
       category: 'discovery',
       read: false,
@@ -125,7 +128,7 @@ router.post('/analyze', async (req, res) => {
 
     return res.json({ session: updated });
   } catch (err: any) {
-    console.error('Error in /context/analyze:', err);
+    console.warn('Notice in /context/analyze:', err?.message || err);
     return res.status(500).json({ error: err?.message || 'Failed to analyze research context.' });
   }
 });

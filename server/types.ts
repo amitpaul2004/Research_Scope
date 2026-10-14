@@ -210,7 +210,7 @@ export interface AutomationExecutionLog {
   inputPayload: Record<string, unknown>;
   outputResult?: Record<string, unknown>;
   errorMessage?: string;
-  executionMode: 'n8n_remote' | 'local_fallback';
+  executionMode: 'n8n_remote' | 'local_fallback' | 'fallback_recovery';
 }
 
 export interface NotificationItem {
