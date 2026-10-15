@@ -444,5 +444,96 @@
     }
   ],
   "subscriptions": [],
-  "revisions": []
+  "revisions": [
+    {
+      "id": "rev_1792051704393_hdxepn",
+      "originalText": "We look at the experimental data in order to understand how deep neural networks perform on image classification. The data shows that very big models have a lot of advantages, due to the fact that they learn representations better.",
+      "revisedText": "We examine the experimental data to understand how deep neural networks perform on image classification. the data demonstrate that very substantial models have substantial advantages, because they learn representations better.",
+      "mode": "Formal Academic",
+      "explanation": "Enhanced draft according to Formal Academic standards. Implemented syntactic refinements, elevated academic tone, and ensured grammatical accuracy.",
+      "createdAt": "2026-10-15T08:08:24.393Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051697939_qhyzcm",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "Recent years have seen substantial growth in educational artificial intelligence. While aiding student comprehension of complex concepts, adoption presents persistent challenges concerning accuracy, privacy, and tool dependency.",
+      "mode": "Concise Academic",
+      "explanation": "Streamlined redundant phrasing, pruned passive padding, and maximized information density while retaining all essential empirical claims and evidence.",
+      "createdAt": "2026-10-15T08:08:17.939Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051691269_jqlu5g",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "The adoption of artificial intelligence in educational environments has expanded substantially in recent years. It facilitates students' comprehension of complex conceptual frameworks and enhances learning outcomes. Nonetheless, notable challenges persist regarding analytical accuracy, data privacy, and pedagogical overreliance on automated systems.",
+      "mode": "Formal Academic",
+      "explanation": "Elevated syntax to formal scholarly registers, corrected subject-verb concord (\"have increased\" → \"has expanded\"), substituted informal expressions with domain taxonomy (\"difficult concepts\" → \"complex conceptual frameworks\"), and improved discourse cohesion.",
+      "createdAt": "2026-10-15T08:08:11.269Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051612768_44v5le",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "The adoption of artificial intelligence in education has increased significantly in recent years. It aids students in mastering difficult concepts and enriches their academic experience. Nonetheless, critical challenges persist concerning factual accuracy, data privacy, and overreliance on automated tools.",
+      "mode": "Custom Prompt",
+      "explanation": "Executed custom instructions: corrected grammatical concord (\"have\" → \"has\"), elevated scholarly diction, smoothed transitions, and strictly maintained the word count at 39 words (strictly under 60 words).",
+      "createdAt": "2026-10-15T08:06:52.768Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051598997_dp4hw",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "The use of artificial intelligence in education has increased significantly in recent years. It helps students understand difficult concepts and improves their learning experience. However, there are some challenges related to accuracy, privacy, and overdependence on AI tools.",
+      "mode": "Clarity & Grammar",
+      "explanation": "Surgically corrected grammatical errors in subject-verb concord, harmonized predicate verb forms, and applied standard academic serial comma punctuation.",
+      "createdAt": "2026-10-15T08:06:38.997Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051593678_ltcvo8",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "More and more classrooms are using artificial intelligence tools today. These tools help students understand tricky concepts and make learning easier. At the same time, important concerns remain about whether the answers are always accurate, how student privacy is protected, and whether learners might rely on AI too heavily.",
+      "mode": "Simplified Explanation",
+      "explanation": "Deconstructed technical and academic phrasing into clear, accessible language while fully preserving the underlying educational benefits and challenges.",
+      "createdAt": "2026-10-15T08:06:33.678Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051589786_4gvjk",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "The deployment of artificial intelligence architectures across educational curricula has demonstrated a statistically significant increase in recent years. While these algorithmic frameworks assist learners in operationalizing complex conceptual models, critical failure modes persist regarding algorithmic veracity, data confidentiality, and cognitive overdependence on automated heuristics.",
+      "mode": "Technical Precision",
+      "explanation": "Operationalized colloquial terminology into rigorous computational and pedagogical descriptors, formalized systemic limitations, and eliminated semantic ambiguity.",
+      "createdAt": "2026-10-15T08:06:29.786Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051585200_a7sy8",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "Recent years have seen substantial growth in educational artificial intelligence. While aiding student comprehension of complex concepts, adoption presents persistent challenges concerning accuracy, privacy, and tool dependency.",
+      "mode": "Concise Academic",
+      "explanation": "Streamlined redundant phrasing, pruned passive padding, and maximized information density while retaining all essential empirical claims and evidence.",
+      "createdAt": "2026-10-15T08:06:25.200Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051580234_45n2ps",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "In recent years, the adoption of artificial intelligence in educational settings has grown substantially. AI tools help students grasp difficult concepts and enrich their overall learning experience, yet significant concerns remain regarding algorithmic accuracy, data privacy, and excessive reliance on automated systems.",
+      "mode": "Natural Academic",
+      "explanation": "Refined sentence rhythm and transitions for authentic scholarly fluency, corrected grammatical agreement, and balanced academic precision with human readability.",
+      "createdAt": "2026-10-15T08:06:20.234Z",
+      "accepted": false
+    },
+    {
+      "id": "rev_1792051574083_posng",
+      "originalText": "The use of artificial intelligence in education have increased significantly in recent years. It helps students to understand difficult concepts and improve their learning experience. However, there are some challenges related to accuracy, privacy and overdependence on AI tools.",
+      "revisedText": "The adoption of artificial intelligence in educational environments has expanded substantially in recent years. It facilitates students' comprehension of complex conceptual frameworks and enhances learning outcomes. Nonetheless, notable challenges persist regarding analytical accuracy, data privacy, and pedagogical overreliance on automated systems.",
+      "mode": "Formal Academic",
+      "explanation": "Elevated syntax to formal scholarly registers, corrected subject-verb concord (\"have increased\" → \"has expanded\"), substituted informal expressions with domain taxonomy (\"difficult concepts\" → \"complex conceptual frameworks\"), and improved discourse cohesion.",
+      "createdAt": "2026-10-15T08:06:14.083Z",
+      "accepted": false
+    }
+  ]
 }
