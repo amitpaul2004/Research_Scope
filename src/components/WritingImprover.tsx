@@ -104,6 +104,9 @@ export const WritingImprover: React.FC<WritingImproverProps> = ({ initialText = 
       console.error('Error enhancing text:', err);
       const errMsg = err?.message || 'Failed to enhance writing. Please try again.';
       setError(errMsg);
+      setRevisedText('');
+      setExplanation('');
+      setImprovements([]);
     } finally {
       setLoading(false);
     }

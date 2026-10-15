@@ -37,6 +37,7 @@ app.use('/api/v1/research/academic', academicRouter);
 app.use('/api/v1/automation', automationRouter);
 app.use('/api/v1/n8n', automationRouter); // alias for n8n webhooks
 app.use('/api/v1/writing', writingRouter);
+app.use('/api/writing', writingRouter);
 app.use('/api/v1', systemRouter);
 
 // Health check endpoint

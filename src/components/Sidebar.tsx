@@ -11,7 +11,6 @@ import {
   Workflow,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -160,23 +159,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
       </div>
-
-      {/* Bottom Pro Badge / Quick Info */}
-      {!collapsed ? (
-        <div className="p-3 m-3 rounded-xl border border-slate-800/80 bg-slate-900/60 text-xs">
-          <div className="flex items-center gap-2 text-indigo-300 font-medium mb-1">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>ResearchLens Pro</span>
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Connected to Gemini 3.8 &amp; n8n Orchestrator. Real arXiv and OpenAlex querying active.
-          </p>
-        </div>
-      ) : (
-        <div className="p-3 flex justify-center text-slate-500">
-          <BookOpen className="w-4 h-4" />
-        </div>
-      )}
     </aside>
   );
 };

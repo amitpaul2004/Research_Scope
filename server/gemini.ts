@@ -862,63 +862,72 @@ export async function improveWriting(params: {
   }
 
   const client = getAiClient();
-  let aiGenerationSuccessful = false;
-  let cleanRevised = '';
-  let parsedExplanation = '';
-  let parsedImprovements: string[] = [];
+  if (!client) {
+    if (isKeyFlaggedAsLeaked) {
+      throw new Error(
+        'Gemini API authentication failed: The configured API key was reported as leaked by Google. Please update your GEMINI_API_KEY with a valid key in AI Studio Settings > Secrets.'
+      );
+    }
+    const currentKey = (process.env.GEMINI_API_KEY || '').trim();
+    if (!currentKey || currentKey === 'MY_GEMINI_API_KEY') {
+      throw new Error(
+        'Gemini API key is not configured. Please set a valid GEMINI_API_KEY in AI Studio Settings > Secrets.'
+      );
+    }
+    throw new Error('Gemini AI client could not be initialized. Please check your API key configuration.');
+  }
 
-  if (client) {
-    // Mode-specific instructions adhering to high academic publishing standards
-    let modeGuidance = '';
-    switch (normalizedMode) {
-      case 'Formal Academic':
-        modeGuidance = `MODE: Formal Academic
+  // Mode-specific instructions adhering to high academic publishing standards
+  let modeGuidance = '';
+  switch (normalizedMode) {
+    case 'Formal Academic':
+      modeGuidance = `MODE: Formal Academic
 OBJECTIVE: Rewrite the text in precise, formal, objective scholarly English. Improve academic vocabulary, syntax, logical flow, and sentence structure while preserving the original meaning. Replace informal phrasing, colloquialisms, and weak verbs with established scholarly conventions.`;
-        break;
+      break;
 
-      case 'Natural Academic':
-        modeGuidance = `MODE: Natural Academic
+    case 'Natural Academic':
+      modeGuidance = `MODE: Natural Academic
 OBJECTIVE: Produce fluent, natural academic prose without robotic phrasing or unnecessary complexity. Enhance transitions, vary sentence length, and establish an authentic, human scholarly voice.`;
-        break;
+      break;
 
-      case 'Concise Academic':
-        modeGuidance = `MODE: Concise Academic
+    case 'Concise Academic':
+      modeGuidance = `MODE: Concise Academic
 OBJECTIVE: Remove redundancy and unnecessary words while retaining the essential meaning, evidence, and technical details. Eliminate throat-clearing qualifiers, redundant phrases, and passive padding to maximize information density.`;
-        break;
+      break;
 
-      case 'Technical Precision':
-        modeGuidance = `MODE: Technical Precision
+    case 'Technical Precision':
+      modeGuidance = `MODE: Technical Precision
 OBJECTIVE: Improve technical accuracy and clarity while strictly preserving domain-specific terminology, equations, variables, notation, and scientific claims. Resolve ambiguities in technical descriptions without inventing unsupported claims.`;
-        break;
+      break;
 
-      case 'Simplified Explanation':
-        modeGuidance = `MODE: Simplified Explanation
+    case 'Simplified Explanation':
+      modeGuidance = `MODE: Simplified Explanation
 OBJECTIVE: Explain complex ideas in accessible language without changing their scientific meaning. Use clear metaphors or intuitive phrasing where helpful to make concepts transparent to an interdisciplinary reader.`;
-        break;
+      break;
 
-      case 'Clarity & Grammar':
-        modeGuidance = `MODE: Clarity & Grammar
+    case 'Clarity & Grammar':
+      modeGuidance = `MODE: Clarity & Grammar
 OBJECTIVE: Correct grammar, spelling, punctuation, subject-verb agreement, and sentence construction while avoiding unnecessary rewriting. Fix errors while keeping the author's structure intact.`;
-        break;
+      break;
 
-      case 'Custom Prompt':
-        modeGuidance = `MODE: Custom Prompt
+    case 'Custom Prompt':
+      modeGuidance = `MODE: Custom Prompt
 OBJECTIVE: Follow the user's custom editing instructions as the PRIMARY requirements while preserving factual accuracy and the intended meaning.
 USER CUSTOM INSTRUCTIONS:
 "${params.customInstructions || 'Rewrite in clear academic English, correct errors, and improve sentence flow.'}"`;
-        break;
+      break;
 
-      default:
-        modeGuidance = `MODE: Formal Academic
+    default:
+      modeGuidance = `MODE: Formal Academic
 OBJECTIVE: Rewrite the text in precise, formal, objective scholarly English. Improve academic vocabulary, syntax, logical flow, and sentence structure while preserving the original meaning.`;
-        break;
-    }
+      break;
+  }
 
-    if (params.customInstructions && normalizedMode !== 'Custom Prompt') {
-      modeGuidance += `\nADDITIONAL USER EDITORIAL DIRECTIVE: "${params.customInstructions}"`;
-    }
+  if (params.customInstructions && normalizedMode !== 'Custom Prompt') {
+    modeGuidance += `\nADDITIONAL USER EDITORIAL DIRECTIVE: "${params.customInstructions}"`;
+  }
 
-    const systemInstructions = `You are a distinguished peer-reviewer, journal editor, and principal scholarly writing specialist.
+  const systemInstructions = `You are a distinguished peer-reviewer, journal editor, and principal scholarly writing specialist.
 Your mission is to REWRITE the author's draft passage according to the specified editing mode.
 OPERATIONAL RULES:
 1. Actively perform the requested rewriting rather than describing potential improvements. Produce the revised text.
@@ -936,7 +945,7 @@ OPERATIONAL RULES:
   ]
 }`;
 
-    const buildPrompt = (isRetry: boolean) => `${systemInstructions}
+  const buildPrompt = (isRetry: boolean) => `${systemInstructions}
 
 ${modeGuidance}
 
@@ -951,370 +960,99 @@ AUTHOR DRAFT:
 ${rawText}
 """`;
 
-    const primaryModel = MODEL_NAME || 'gemini-3.8-flash';
-    const fallbackModel = 'gemini-2.5-flash';
+  const primaryModel = MODEL_NAME || 'gemini-3.8-flash';
+  const fallbackModel = 'gemini-2.5-flash';
 
-    const callModel = async (modelName: string, promptText: string) => {
-      return await client.models.generateContent({
-        model: modelName,
-        contents: promptText,
-        config: {
-          responseMimeType: 'application/json',
-        },
-      });
-    };
+  const callModel = async (modelName: string, promptText: string) => {
+    return await client.models.generateContent({
+      model: modelName,
+      contents: promptText,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+  };
 
+  try {
+    let rawOutput = '';
+    let modelUsed = primaryModel;
     try {
-      let rawOutput = '';
-      let modelUsed = primaryModel;
-      try {
-        const res = await callModel(primaryModel, buildPrompt(false));
-        rawOutput = res.text || '';
-      } catch (err: any) {
-        const errMsg = String(err?.message || err || '');
-        if (errMsg.includes('NOT_FOUND') || errMsg.includes('404') || errMsg.includes('not supported')) {
-          const fallbackRes = await callModel(fallbackModel, buildPrompt(false));
-          rawOutput = fallbackRes.text || '';
-          modelUsed = fallbackModel;
-        } else {
-          throw err;
-        }
+      const res = await callModel(primaryModel, buildPrompt(false));
+      rawOutput = res.text || '';
+    } catch (err: any) {
+      const errMsg = String(err?.message || err || '');
+      if (
+        errMsg.includes('NOT_FOUND') ||
+        errMsg.includes('404') ||
+        errMsg.includes('not supported') ||
+        errMsg.includes('is not found')
+      ) {
+        const fallbackRes = await callModel(fallbackModel, buildPrompt(false));
+        rawOutput = fallbackRes.text || '';
+        modelUsed = fallbackModel;
+      } else {
+        throw err;
       }
+    }
 
-      let parsed = parseJsonFromLlm<{
+    let parsed = parseJsonFromLlm<{
+      revisedText?: string;
+      explanation?: string;
+      improvements?: string[];
+    }>(rawOutput, {});
+
+    let parsedText = (parsed.revisedText || '').trim();
+    if (!parsedText && rawOutput.trim()) {
+      let stripped = rawOutput.trim();
+      if (stripped.startsWith('```json')) {
+        stripped = stripped.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+      } else if (stripped.startsWith('```')) {
+        stripped = stripped.replace(/^```\s*/, '').replace(/```\s*$/, '');
+      }
+      parsedText = stripped.trim();
+    }
+
+    if (parsedText && parsedText.toLowerCase() === rawText.toLowerCase()) {
+      const retryRes = await callModel(modelUsed, buildPrompt(true));
+      const retryParsed = parseJsonFromLlm<{
         revisedText?: string;
         explanation?: string;
         improvements?: string[];
-      }>(rawOutput, {});
-
-      let parsedText = (parsed.revisedText || '').trim();
-      if (!parsedText && rawOutput.trim()) {
-        let stripped = rawOutput.trim();
-        if (stripped.startsWith('```json')) {
-          stripped = stripped.replace(/^```json\s*/, '').replace(/```\s*$/, '');
-        } else if (stripped.startsWith('```')) {
-          stripped = stripped.replace(/^```\s*/, '').replace(/```\s*$/, '');
-        }
-        parsedText = stripped.trim();
+      }>(retryRes.text || '', {});
+      if (
+        retryParsed.revisedText &&
+        retryParsed.revisedText.trim().toLowerCase() !== rawText.toLowerCase()
+      ) {
+        parsed = retryParsed;
+        parsedText = retryParsed.revisedText.trim();
       }
-
-      if (parsedText && parsedText.toLowerCase() === rawText.toLowerCase()) {
-        const retryRes = await callModel(modelUsed, buildPrompt(true));
-        const retryParsed = parseJsonFromLlm<{
-          revisedText?: string;
-          explanation?: string;
-          improvements?: string[];
-        }>(retryRes.text || '', {});
-        if (
-          retryParsed.revisedText &&
-          retryParsed.revisedText.trim().toLowerCase() !== rawText.toLowerCase()
-        ) {
-          parsed = retryParsed;
-          parsedText = retryParsed.revisedText.trim();
-        }
-      }
-
-      if (parsedText && parsedText.toLowerCase() !== rawText.toLowerCase()) {
-        cleanRevised = parsedText;
-        parsedExplanation = parsed.explanation || '';
-        parsedImprovements = parsed.improvements || [];
-        aiGenerationSuccessful = true;
-      }
-    } catch (apiErr: any) {
-      const errStr = String(apiErr?.message || apiErr || '');
-      if (errStr.includes('leaked') || errStr.includes('403') || errStr.includes('PERMISSION_DENIED')) {
-        markKeyAsLeakedOrUnauthorized();
-      }
-      console.warn('Gemini API call bypassed or rejected (fallback active):', apiErr?.message || apiErr);
     }
-  }
 
-  // If Gemini succeeded, return its response
-  if (aiGenerationSuccessful && cleanRevised) {
+    if (!parsedText || parsedText.toLowerCase() === rawText.toLowerCase()) {
+      throw new Error(
+        `The enhancement model returned the original text without modifications for "${normalizedMode}". Please try another mode or customize your instructions.`
+      );
+    }
+
     return {
-      revisedText: cleanRevised,
+      revisedText: parsedText,
       explanation:
-        parsedExplanation.trim() ||
+        parsed.explanation?.trim() ||
         `Enhanced according to ${normalizedMode} standards. Improved sentence architecture, academic diction, and flow while retaining factual integrity.`,
       improvements:
-        parsedImprovements.length > 0
-          ? parsedImprovements
+        Array.isArray(parsed.improvements) && parsed.improvements.length > 0
+          ? parsed.improvements
           : [
               `Calibrated vocabulary and phrasing to align with ${normalizedMode} conventions`,
               'Refined sentence structure and scholarly cadence',
             ],
       mode: normalizedMode,
     };
-  }
-
-  // Autonomous Scholarly Editorial Engine
-  // Provides authentic, mode-appropriate, grammatically rigorous academic revisions
-  return runAutonomousScholarlyEnhancement(rawText, normalizedMode, params.customInstructions);
-}
-
-/**
- * Autonomous Scholarly Editorial Engine
- * Performs authentic linguistic, grammatical, and stylometric academic transformation across all 7 modes.
- */
-function runAutonomousScholarlyEnhancement(
-  text: string,
-  mode: string,
-  customInstructions?: string
-): {
-  revisedText: string;
-  explanation: string;
-  improvements: string[];
-  mode: string;
-} {
-  const normalizedInput = text.trim();
-  const lowerInput = normalizedInput.toLowerCase();
-
-  // Benchmark Paragraph Pattern Detection
-  const isAiEducationParagraph =
-    lowerInput.includes('artificial intelligence in education') &&
-    (lowerInput.includes('have increased') || lowerInput.includes('has increased')) &&
-    lowerInput.includes('difficult concepts') &&
-    lowerInput.includes('overdependence');
-
-  if (isAiEducationParagraph) {
-    switch (mode) {
-      case 'Formal Academic':
-        return {
-          revisedText:
-            'The adoption of artificial intelligence in educational environments has expanded substantially in recent years. It facilitates students\' comprehension of complex conceptual frameworks and enhances learning outcomes. Nonetheless, notable challenges persist regarding analytical accuracy, data privacy, and pedagogical overreliance on automated systems.',
-          explanation:
-            'Elevated syntax to formal scholarly registers, corrected subject-verb concord ("have increased" → "has expanded"), substituted informal expressions with domain taxonomy ("difficult concepts" → "complex conceptual frameworks"), and improved discourse cohesion.',
-          improvements: [
-            'Corrected subject-verb agreement: "The use... have increased" changed to "The adoption... has expanded substantially"',
-            'Elevated vocabulary to formal scholarly registers ("helps students to understand" → "facilitates students\' comprehension of complex conceptual frameworks")',
-            'Strengthened transition markers ("However" → "Nonetheless") and enforced serial comma punctuation',
-          ],
-          mode,
-        };
-
-      case 'Natural Academic':
-        return {
-          revisedText:
-            'In recent years, the adoption of artificial intelligence in educational settings has grown substantially. AI tools help students grasp difficult concepts and enrich their overall learning experience, yet significant concerns remain regarding algorithmic accuracy, data privacy, and excessive reliance on automated systems.',
-          explanation:
-            'Refined sentence rhythm and transitions for authentic scholarly fluency, corrected grammatical agreement, and balanced academic precision with human readability.',
-          improvements: [
-            'Smoothed transitional cadence and eliminated repetitive sentence starters',
-            'Corrected grammatical concord ("have increased" to "has grown")',
-            'Balanced formal precision with natural, readable academic prose',
-          ],
-          mode,
-        };
-
-      case 'Concise Academic':
-        return {
-          revisedText:
-            'Recent years have seen substantial growth in educational artificial intelligence. While aiding student comprehension of complex concepts, adoption presents persistent challenges concerning accuracy, privacy, and tool dependency.',
-          explanation:
-            'Streamlined redundant phrasing, pruned passive padding, and maximized information density while retaining all essential empirical claims and evidence.',
-          improvements: [
-            'Condensed 48 words into 27 words (44% reduction in word count) without loss of meaning',
-            'Eliminated filler phrases ("there are some challenges related to")',
-            'Tightened clausal relationships into high-density academic assertions',
-          ],
-          mode,
-        };
-
-      case 'Technical Precision':
-        return {
-          revisedText:
-            'The deployment of artificial intelligence architectures across educational curricula has demonstrated a statistically significant increase in recent years. While these algorithmic frameworks assist learners in operationalizing complex conceptual models, critical failure modes persist regarding algorithmic veracity, data confidentiality, and cognitive overdependence on automated heuristics.',
-          explanation:
-            'Operationalized colloquial terminology into rigorous computational and pedagogical descriptors, formalized systemic limitations, and eliminated semantic ambiguity.',
-          improvements: [
-            'Operationalized generic descriptors into domain-specific technical taxonomy ("conceptual models", "failure modes", "algorithmic veracity")',
-            'Corrected grammatical concord in the main predicate',
-            'Preserved exact empirical scope without introducing unsupported scientific assertions',
-          ],
-          mode,
-        };
-
-      case 'Simplified Explanation':
-        return {
-          revisedText:
-            'More and more classrooms are using artificial intelligence tools today. These tools help students understand tricky concepts and make learning easier. At the same time, important concerns remain about whether the answers are always accurate, how student privacy is protected, and whether learners might rely on AI too heavily.',
-          explanation:
-            'Deconstructed technical and academic phrasing into clear, accessible language while fully preserving the underlying educational benefits and challenges.',
-          improvements: [
-            'Replaced dense academic formulations with intuitive, clear verbs and explanations',
-            'Framed technical challenges as concrete questions of accuracy, privacy protection, and overreliance',
-            'Corrected grammatical agreement while maintaining an approachable tone',
-          ],
-          mode,
-        };
-
-      case 'Clarity & Grammar':
-        return {
-          revisedText:
-            'The use of artificial intelligence in education has increased significantly in recent years. It helps students understand difficult concepts and improves their learning experience. However, there are some challenges related to accuracy, privacy, and overdependence on AI tools.',
-          explanation:
-            'Surgically corrected grammatical errors in subject-verb concord, harmonized predicate verb forms, and applied standard academic serial comma punctuation.',
-          improvements: [
-            'Corrected subject-verb concord: "The use... have increased" changed to "The use... has increased"',
-            'Harmonized verb parallelisms ("helps students understand... and improves")',
-            'Inserted Oxford comma before "and overdependence" to comply with standard academic style',
-          ],
-          mode,
-        };
-
-      case 'Custom Prompt': {
-        const customLower = (customInstructions || '').toLowerCase();
-        let revised =
-          'The adoption of artificial intelligence in education has increased significantly in recent years. It aids students in mastering difficult concepts and enriches their academic experience. Nonetheless, critical challenges persist concerning factual accuracy, data privacy, and overreliance on automated tools.';
-        
-        let wordCountExplanation = '39 words';
-        if (customLower.includes('60 words') || customLower.includes('under 60')) {
-          wordCountExplanation = '39 words (strictly under 60 words)';
-        }
-
-        return {
-          revisedText: revised,
-          explanation: `Executed custom instructions: corrected grammatical concord ("have" → "has"), elevated scholarly diction, smoothed transitions, and strictly maintained the word count at ${wordCountExplanation}.`,
-          improvements: [
-            `Strictly complied with custom instructions (${wordCountExplanation})`,
-            'Corrected subject-verb agreement and enhanced sentence flow',
-            'Preserved original factual meaning and empirical claims',
-          ],
-          mode,
-        };
-      }
+  } catch (apiErr: any) {
+    const errStr = String(apiErr?.message || apiErr || '');
+    if (errStr.includes('leaked') || errStr.includes('403') || errStr.includes('PERMISSION_DENIED')) {
+      markKeyAsLeakedOrUnauthorized();
     }
+    throw formatGeminiError(apiErr);
   }
-
-  // Generalized Academic Linguistic & Stylometric Transformer
-  let transformed = normalizedInput;
-  const appliedFixes: string[] = [];
-
-  // Pass 1: Universal Scholarly Grammar & Concord Fixes
-  // Fix subject-verb agreement with collective/prepositional phrases
-  if (/\b(use|adoption|integration|implementation|deployment)\s+of\s+([a-zA-Z\s]+?)\s+have\b/i.test(transformed)) {
-    transformed = transformed.replace(
-      /\b(use|adoption|integration|implementation|deployment)\s+of\s+([a-zA-Z\s]+?)\s+have\b/gi,
-      '$1 of $2 has'
-    );
-    appliedFixes.push('Corrected subject-verb agreement error with prepositional subject');
-  }
-
-  if (/\bthe\s+data\s+shows\b/i.test(transformed)) {
-    transformed = transformed.replace(/\bthe\s+data\s+shows\b/gi, 'the data demonstrate');
-    appliedFixes.push('Aligned plural concord for "data demonstrate"');
-  }
-
-  if (/\bcriteria\s+is\b/i.test(transformed)) {
-    transformed = transformed.replace(/\bcriteria\s+is\b/gi, 'criteria are');
-    appliedFixes.push('Corrected irregular plural agreement ("criteria are")');
-  }
-
-  // Serial comma insertion (Oxford comma)
-  if (/([a-zA-Z0-9]+),\s+([a-zA-Z0-9\s]+)\s+and\s+([a-zA-Z0-9]+)/.test(transformed)) {
-    transformed = transformed.replace(
-      /([a-zA-Z0-9]+),\s+([a-zA-Z0-9\s]+)\s+and\s+([a-zA-Z0-9]+)/g,
-      '$1, $2, and $3'
-    );
-    appliedFixes.push('Enforced academic serial (Oxford) comma');
-  }
-
-  // Informal filler pruning
-  transformed = transformed.replace(/\bin order to\b/gi, 'to');
-  transformed = transformed.replace(/\bdue to the fact that\b/gi, 'because');
-  transformed = transformed.replace(/\ba lot of\b/gi, 'substantial');
-
-  // Pass 2: Mode-Specific Structural & Lexical Calibration
-  switch (mode) {
-    case 'Formal Academic':
-      transformed = transformed
-        .replace(/\bhelps\s+students\s+to\s+understand\b/gi, 'facilitates comprehension for students regarding')
-        .replace(/\bhelps\s+([a-zA-Z]+)\s+to\s+([a-zA-Z]+)\b/gi, 'facilitates $1 in $2ing')
-        .replace(/\bvery\s+important\b/gi, 'paramount')
-        .replace(/\bvery\s+significant\b/gi, 'statistically significant')
-        .replace(/\bshows\s+that\b/gi, 'demonstrates that')
-        .replace(/\blook\s+at\b/gi, 'examine')
-        .replace(/\bbig\b/gi, 'substantial')
-        .replace(/\bgood\b/gi, 'efficacious')
-        .replace(/\bHowever,\b/g, 'Nonetheless,')
-        .replace(/\bAlso,\b/g, 'Furthermore,');
-      appliedFixes.push('Elevated vocabulary to formal scholarly registers and strengthened transitions');
-      break;
-
-    case 'Natural Academic':
-      transformed = transformed
-        .replace(/\bIt is important to note that\b/gi, 'Notably,')
-        .replace(/\bIn addition to this,\b/gi, 'Additionally,')
-        .replace(/\bHowever,\b/g, 'Yet,')
-        .replace(/\bvery\b/gi, 'notably');
-      appliedFixes.push('Refined natural transitional cadence and sentence rhythm');
-      break;
-
-    case 'Concise Academic':
-      transformed = transformed
-        .replace(/\bIt can be observed that\s+/gi, '')
-        .replace(/\bThere is an indication that\s+/gi, '')
-        .replace(/\bThere are some challenges related to\s+/gi, 'Challenges involve ')
-        .replace(/\bsignificantly in recent years\b/gi, 'substantially')
-        .replace(/\bvery\s+/gi, '')
-        .replace(/\breally\s+/gi, '');
-      appliedFixes.push('Pruned passive padding and maximized information density');
-      break;
-
-    case 'Technical Precision':
-      transformed = transformed
-        .replace(/\bchallenges\b/gi, 'failure modes and constraints')
-        .replace(/\baccuracy\b/gi, 'predictive veracity')
-        .replace(/\bconcepts\b/gi, 'theoretical frameworks')
-        .replace(/\btools\b/gi, 'algorithmic systems');
-      appliedFixes.push('Operationalized technical terminology and resolved semantic ambiguity');
-      break;
-
-    case 'Simplified Explanation':
-      transformed = transformed
-        .replace(/\bsignificantly in recent years\b/gi, 'rapidly today')
-        .replace(/\bfacilitates\b/gi, 'helps with')
-        .replace(/\boverdependence\b/gi, 'relying too much');
-      appliedFixes.push('Clarified complex academic phrasing into accessible, lucid explanations');
-      break;
-
-    case 'Clarity & Grammar':
-      // Keeps original structure intact, applying only grammar and punctuation
-      appliedFixes.push('Surgically repaired grammar, concord, and punctuation');
-      break;
-
-    case 'Custom Prompt': {
-      const lowerCustom = (customInstructions || '').toLowerCase();
-      if (lowerCustom.includes('under') && lowerCustom.includes('words')) {
-        const words = transformed.split(/\s+/);
-        const match = lowerCustom.match(/under\s+(\d+)\s+words/);
-        const targetCount = match ? parseInt(match[1], 10) : 60;
-        if (words.length > targetCount) {
-          transformed = words.slice(0, targetCount - 5).join(' ') + '.';
-          appliedFixes.push(`Constrained text to under ${targetCount} words as requested`);
-        }
-      }
-      appliedFixes.push('Applied custom editorial directives');
-      break;
-    }
-  }
-
-  // Ensure output is distinct from input
-  if (transformed.trim().toLowerCase() === normalizedInput.toLowerCase()) {
-    transformed = 'In academic evaluation, ' + transformed.charAt(0).toLowerCase() + transformed.slice(1);
-    appliedFixes.push('Reconstructed clausal opening to heighten formal academic delivery');
-  }
-
-  return {
-    revisedText: transformed,
-    explanation: `Enhanced draft according to ${mode} standards. Implemented syntactic refinements, elevated academic tone, and ensured grammatical accuracy.`,
-    improvements:
-      appliedFixes.length > 0
-        ? appliedFixes
-        : [
-            `Calibrated vocabulary to align with ${mode} conventions`,
-            'Refined sentence structure and academic cadence',
-          ],
-    mode,
-  };
 }
