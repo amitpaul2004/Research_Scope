@@ -298,7 +298,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  category: 'paper' | 'gap' | 'digest' | 'automation' | 'discovery';
+  category: 'paper' | 'gap' | 'digest' | 'automation' | 'discovery' | 'ai_analysis' | 'pdf_export';
   read: boolean;
   createdAt: string;
   actionUrl?: string;

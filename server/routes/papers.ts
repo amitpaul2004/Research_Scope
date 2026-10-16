@@ -5,7 +5,7 @@ import path from 'path';
 import { db } from '../db';
 import { parsePdfBuffer, findRelevantPassages, computeFileHash } from '../pdfService';
 import { analyzePaperDocument, askPaperQuestion } from '../gemini';
-import { performAiLikelihoodAnalysis } from '../services/aiDetectionService';
+import { performAiLikelihoodAnalysis, scoreSentence } from '../services/aiDetectionService';
 import { generateHighlightedPdf } from '../services/pdfHighlightService';
 import { evaluateBenchmark } from '../benchmarkData';
 import { dispatchWorkflowEvent } from '../n8nService';
@@ -263,7 +263,10 @@ router.post('/:id/chat', async (req, res) => {
  */
 router.get('/ai-likelihood/benchmark', (req, res) => {
   const threshold = parseInt(req.query.threshold as string, 10) || 60;
-  const metrics = evaluateBenchmark(text => ({ aiScore: 35 }), threshold);
+  const metrics = evaluateBenchmark(
+    text => ({ aiScore: scoreSentence(text, 1, 0, 0, 22, 7, threshold).aiScore }),
+    threshold
+  );
   return res.json({ benchmark: metrics });
 });
 
@@ -304,6 +307,20 @@ router.post('/:id/ai-likelihood', async (req, res) => {
     const result = await performAiLikelihoodAnalysis(paper.extractedText, pages, threshold);
     const updated = db.updatePaper(paper.id, { aiLikelihood: result });
 
+    // Add notification for AI analysis completion
+    const user = db.getCurrentUser();
+    db.addNotification({
+      id: `notif_${Date.now()}_ai`,
+      userId: user.id,
+      title: 'AI Analysis Complete',
+      message: `Completed stylometric analysis for "${paper.title.slice(0, 40)}" at ${threshold}% threshold — Overall AI Score: ${result.overallAiScore}%.`,
+      type: 'info',
+      category: 'ai_analysis',
+      read: false,
+      createdAt: new Date().toISOString(),
+      actionUrl: `/papers/${paper.id}`,
+    });
+
     return res.json({ aiLikelihood: result, paper: updated });
   } catch (err: any) {
     console.error('Error re-running AI likelihood:', err);
@@ -327,7 +344,24 @@ router.get('/:id/download-original', (req, res) => {
     return res.status(404).json({ error: 'Original PDF file could not be located on disk.' });
   }
 
-  const safeDownloadName = (paper.fileName || `${paper.title}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const user = db.getCurrentUser();
+  const safeTitle = (paper.title || 'Research_Paper')
+    .slice(0, 45)
+    .replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeDownloadName = `${safeTitle}_Original.pdf`;
+
+  db.addNotification({
+    id: `notif_${Date.now()}_orig_pdf`,
+    userId: user.id,
+    title: 'Original PDF Downloaded',
+    message: `Downloaded pristine source document "${safeDownloadName}".`,
+    type: 'success',
+    category: 'pdf_export',
+    read: false,
+    createdAt: new Date().toISOString(),
+    actionUrl: `/papers/${paper.id}`,
+  });
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${safeDownloadName}"`);
   return res.sendFile(diskPath);
@@ -336,11 +370,12 @@ router.get('/:id/download-original', (req, res) => {
 /**
  * Export AI Analysis — Highlighted PDF
  * Overlays translucent highlights directly onto the original uploaded PDF
- * and prepends a comprehensive ResearchLens AI Analysis Audit & Legend Page.
+ * and prepends a comprehensive ResearchLens AI Analysis Summary & Legend Page.
  */
 router.get('/:id/export-highlighted-pdf', async (req, res) => {
+  let paper: ResearchPaper | undefined;
   try {
-    const paper = db.getPaperById(req.params.id);
+    paper = db.getPaperById(req.params.id);
     if (!paper) {
       return res.status(404).json({ error: 'Paper not found' });
     }
@@ -353,28 +388,64 @@ router.get('/:id/export-highlighted-pdf', async (req, res) => {
     }
 
     const originalBuffer = fs.readFileSync(diskPath);
+    const thresholdParam = req.query.threshold ? parseInt(req.query.threshold as string, 10) : undefined;
 
-    // If paper has no AI Likelihood report yet, generate one now
+    // Retrieve or run AI Likelihood report
     let aiReport = paper.aiLikelihood;
-    if (!aiReport || !aiReport.sentences || aiReport.sentences.length === 0) {
+    if (
+      !aiReport ||
+      !aiReport.sentences ||
+      aiReport.sentences.length === 0 ||
+      (thresholdParam !== undefined && aiReport.selectedThreshold !== thresholdParam)
+    ) {
       const parsed = await parsePdfBuffer(originalBuffer);
-      aiReport = await performAiLikelihoodAnalysis(parsed.text, parsed.pages, 60);
+      aiReport = await performAiLikelihoodAnalysis(parsed.text, parsed.pages, thresholdParam || 60);
       db.updatePaper(paper.id, { aiLikelihood: aiReport });
     }
 
-    const highlightedBuffer = await generateHighlightedPdf(originalBuffer, paper, aiReport);
+    const { buffer: highlightedBuffer, stats } = await generateHighlightedPdf(
+      originalBuffer,
+      paper,
+      aiReport,
+      thresholdParam
+    );
 
     const safeTitle = (paper.title || 'Research_Paper')
       .slice(0, 45)
       .replace(/[^a-zA-Z0-9_-]/g, '_');
     const downloadFilename = `${safeTitle}_AI_Highlighted.pdf`;
 
+    const user = db.getCurrentUser();
+    db.addNotification({
+      id: `notif_${Date.now()}_pdf`,
+      userId: user.id,
+      title: 'Highlighted PDF Exported',
+      message: `Exported Highlighted PDF for "${paper.title.slice(0, 40)}" (${stats.highlightedPassages} passages highlighted, ${stats.unmatchedPassages} unmatched at ${stats.thresholdUsed}% threshold).`,
+      type: 'success',
+      category: 'pdf_export',
+      read: false,
+      createdAt: new Date().toISOString(),
+      actionUrl: `/papers/${paper.id}`,
+    });
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     res.setHeader('Content-Length', highlightedBuffer.length);
     return res.end(highlightedBuffer);
   } catch (err: any) {
     console.error('Failed to generate highlighted PDF:', err);
+    const user = db.getCurrentUser();
+    db.addNotification({
+      id: `notif_${Date.now()}_pdf_err`,
+      userId: user.id,
+      title: 'PDF Export Failed',
+      message: `Failed to generate highlighted PDF for "${paper?.title || 'selected paper'}": ${err?.message || 'Server error'}`,
+      type: 'error',
+      category: 'pdf_export',
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
     return res.status(500).json({ error: err?.message || 'Failed to generate highlighted PDF.' });
   }
 });

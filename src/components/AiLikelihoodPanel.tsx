@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   ShieldAlert,
   AlertTriangle,
+  AlertCircle,
   Sparkles,
   Info,
   CheckCircle2,
@@ -48,6 +49,10 @@ export const AiLikelihoodPanel: React.FC<AiLikelihoodPanelProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportFeedback, setExportFeedback] = useState<{
+    type: 'success' | 'error' | 'generating' | null;
+    message?: string;
+  }>({ type: null });
   const [showBenchmarkModal, setShowBenchmarkModal] = useState(false);
   const [benchmarkData, setBenchmarkData] = useState<ValidationMetrics | null>(null);
   const [loadingBenchmark, setLoadingBenchmark] = useState(false);
@@ -118,17 +123,40 @@ export const AiLikelihoodPanel: React.FC<AiLikelihoodPanelProps> = ({
     }
   };
 
-  // Direct Highlighted PDF Download
-  const handleDownloadHighlightedPdf = () => {
+  // Direct Highlighted PDF Download with genuine blob handling, duplicate prevention, and real server feedback
+  const handleDownloadHighlightedPdf = async () => {
+    if (exportingPdf) return; // Prevent duplicate concurrent downloads
     setExportingPdf(true);
-    const downloadUrl = api.getHighlightedPdfUrl(paper.id);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `${paper.title.slice(0, 40).replace(/[^a-zA-Z0-9_-]/g, '_')}_AI_Highlighted.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => setExportingPdf(false), 1200);
+    setExportFeedback({
+      type: 'generating',
+      message: 'Extracting text coordinates and overlaying precise highlighted rectangles onto original PDF...',
+    });
+
+    try {
+      const { blob, filename } = await api.downloadHighlightedPdfBlob(paper.id, currentThreshold);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setExportFeedback({
+        type: 'success',
+        message: `Highlighted PDF successfully generated and downloaded: "${filename}"`,
+      });
+      onRefreshPaper();
+    } catch (err: any) {
+      console.error('Failed to generate highlighted PDF:', err);
+      setExportFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to generate highlighted PDF. Verify that the original PDF is available.',
+      });
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   // Open Benchmark Modal
@@ -247,6 +275,42 @@ export const AiLikelihoodPanel: React.FC<AiLikelihoodPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Export Status Notification Banner */}
+      {exportFeedback.type && (
+        <div
+          className={`p-4 rounded-2xl text-xs flex items-center justify-between gap-3 shadow-md transition-all ${
+            exportFeedback.type === 'generating'
+              ? 'bg-indigo-950/40 border border-indigo-800/60 text-indigo-200'
+              : exportFeedback.type === 'success'
+              ? 'bg-emerald-950/40 border border-emerald-800/60 text-emerald-200'
+              : 'bg-rose-950/40 border border-rose-800/60 text-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {exportFeedback.type === 'generating' && (
+              <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin shrink-0" />
+            )}
+            {exportFeedback.type === 'success' && (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            {exportFeedback.type === 'error' && (
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span className="font-medium text-[11px] leading-relaxed">
+              {exportFeedback.message}
+            </span>
+          </div>
+          {exportFeedback.type !== 'generating' && (
+            <button
+              onClick={() => setExportFeedback({ type: null })}
+              className="p-1 rounded hover:bg-slate-800/50 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Scanned PDF Warning Banner (if applicable) */}
       {report?.isScannedPdf && (

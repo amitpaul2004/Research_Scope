@@ -105,8 +105,37 @@ export const api = {
   getAiLikelihoodBenchmark: (threshold: number = 60) =>
     fetchJson<{ benchmark: any }>(`${BASE_URL}/papers/ai-likelihood/benchmark?threshold=${threshold}`),
   getOriginalPdfUrl: (id: string) => `${BASE_URL}/papers/${id}/download-original`,
-  getHighlightedPdfUrl: (id: string) => `${BASE_URL}/papers/${id}/export-highlighted-pdf`,
+  getHighlightedPdfUrl: (id: string, threshold?: number) =>
+    `${BASE_URL}/papers/${id}/export-highlighted-pdf${threshold !== undefined ? `?threshold=${threshold}` : ''}`,
   getDataExportUrl: (id: string, format: 'csv' | 'json' = 'csv') => `${BASE_URL}/papers/${id}/export-data?format=${format}`,
+
+  downloadHighlightedPdfBlob: async (id: string, threshold?: number) => {
+    const url = `${BASE_URL}/papers/${id}/export-highlighted-pdf${threshold !== undefined ? `?threshold=${threshold}` : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `Failed to download highlighted PDF (Status ${res.status})` }));
+      throw new Error(err.error || `Download failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+    const filename = filenameMatch ? filenameMatch[1] : `AI_Highlighted_${id}.pdf`;
+    return { blob, filename };
+  },
+
+  downloadOriginalPdfBlob: async (id: string) => {
+    const url = `${BASE_URL}/papers/${id}/download-original`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `Failed to download original PDF (Status ${res.status})` }));
+      throw new Error(err.error || `Download failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+    const filename = filenameMatch ? filenameMatch[1] : `Original_${id}.pdf`;
+    return { blob, filename };
+  },
 
   // Multi-Paper Comparison
   runComparison: (paperIds: string[]) => fetchJson<{ comparison: PaperComparison }>(`${BASE_URL}/research/compare/run`, {
