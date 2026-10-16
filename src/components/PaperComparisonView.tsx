@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { ResearchPaper, PaperComparison } from '../types';
+import { Scroll3DSection } from './animations/Scroll3DSection';
+import { Tilt3DCard } from './animations/Tilt3DCard';
 
 interface PaperComparisonViewProps {
   papers: ResearchPaper[];
@@ -146,7 +148,8 @@ export const PaperComparisonView: React.FC<PaperComparisonViewProps> = ({ papers
 
       {/* Comparison Results */}
       {activeComparison ? (
-        <div className="space-y-6">
+        <Scroll3DSection depth="medium">
+          <div className="space-y-6">
           {/* Executive Comparative Summary */}
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -251,6 +254,7 @@ export const PaperComparisonView: React.FC<PaperComparisonViewProps> = ({ papers
             </div>
           </div>
         </div>
+      </Scroll3DSection>
       ) : (
         <div className="p-12 text-center border border-dashed border-slate-800 rounded-2xl text-slate-500">
           Select at least 2 papers above and click "Run Multi-Paper Comparison" to generate matrix.

@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { N8nAutomationWorkflow, AutomationExecutionLog } from '../types';
+import { Tilt3DCard } from './animations/Tilt3DCard';
+import { Scroll3DSection } from './animations/Scroll3DSection';
 
 export const N8nAutomationCenter: React.FC = () => {
   const [workflows, setWorkflows] = useState<N8nAutomationWorkflow[]>([]);
@@ -258,68 +260,74 @@ export const N8nAutomationCenter: React.FC = () => {
           Modular Workflows (Workflows A — L)
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workflows.map((wf) => {
-            const isTriggering = triggeringKey === wf.key;
+        <Scroll3DSection depth="medium">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {workflows.map((wf, wIdx) => {
+              const isTriggering = triggeringKey === wf.key;
 
-            return (
-              <div
-                key={wf.id}
-                className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 shadow-md transition-all flex flex-col justify-between space-y-3"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-[10px] mb-1.5">
-                    <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-semibold uppercase">
-                      {wf.triggerType}
-                    </span>
-                    <span className="text-slate-400">
-                      Success: <strong className="text-emerald-400">{wf.successRate}%</strong>
-                    </span>
+              return (
+                <Tilt3DCard
+                  key={wf.id}
+                  index={wIdx}
+                  maxTilt={5}
+                  scaleOnHover={1.02}
+                >
+                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 shadow-md transition-all flex flex-col justify-between space-y-3 h-full">
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] mb-1.5">
+                        <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-semibold uppercase">
+                          {wf.triggerType}
+                        </span>
+                        <span className="text-slate-400">
+                          Success: <strong className="text-emerald-400">{wf.successRate}%</strong>
+                        </span>
+                      </div>
+
+                      <h3 className="text-xs font-bold text-white line-clamp-1">
+                        {wf.name}
+                      </h3>
+
+                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                        {wf.description}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <span>Runs: {wf.totalRuns}</span>
+                        <span>{wf.schedule || 'Event Triggered'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleTrigger(wf.key)}
+                          disabled={isTriggering}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {isTriggering ? (
+                            <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                          ) : (
+                            <Play className="w-3 h-3 text-emerald-400" />
+                          )}
+                          <span>Test Run</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDownloadWorkflowJson(wf)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                          title="Download importable n8n workflow JSON"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span className="hidden sm:inline">JSON</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
-                  <h3 className="text-xs font-bold text-white line-clamp-1">
-                    {wf.name}
-                  </h3>
-
-                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed line-clamp-2">
-                    {wf.description}
-                  </p>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
-                    <span>Runs: {wf.totalRuns}</span>
-                    <span>{wf.schedule || 'Event Triggered'}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleTrigger(wf.key)}
-                      disabled={isTriggering}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {isTriggering ? (
-                        <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
-                      ) : (
-                        <Play className="w-3 h-3 text-emerald-400" />
-                      )}
-                      <span>Test Run</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDownloadWorkflowJson(wf)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
-                      title="Download importable n8n workflow JSON"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span className="hidden sm:inline">JSON</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                </Tilt3DCard>
+              );
+            })}
+          </div>
+        </Scroll3DSection>
       </div>
 
       {/* Execution Logs & Inspection Drawer */}

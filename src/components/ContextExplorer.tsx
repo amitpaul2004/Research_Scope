@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { ResearchContextSession } from '../types';
+import { Scroll3DSection } from './animations/Scroll3DSection';
+import { Tilt3DCard } from './animations/Tilt3DCard';
 
 interface ContextExplorerProps {
   onExport: (type: 'session', id: string) => void;
@@ -420,7 +422,8 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
         {/* Right Column: Detailed Analysis Report & Interactive Chat */}
         <div className="lg:col-span-7 space-y-6">
           {activeSession && activeSession.report ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl overflow-hidden">
+            <Scroll3DSection depth="shallow">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl overflow-hidden">
               {/* Header Bar of Active Session */}
               <div className="border-b border-slate-800 p-4 sm:p-5 bg-slate-950/50">
                 <div className="flex items-start justify-between gap-3">
@@ -807,6 +810,7 @@ export const ContextExplorer: React.FC<ContextExplorerProps> = ({
                 </div>
               </div>
             </div>
+          </Scroll3DSection>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
               <Sparkles className="w-8 h-8 text-slate-600 mx-auto mb-3" />

@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { ResearchGap } from '../types';
+import { Tilt3DCard } from './animations/Tilt3DCard';
+import { Scroll3DSection } from './animations/Scroll3DSection';
 
 export const ResearchGapFinder: React.FC = () => {
   const [gaps, setGaps] = useState<ResearchGap[]>([]);
@@ -164,8 +166,9 @@ export const ResearchGapFinder: React.FC = () => {
         </div>
       </div>
 
-      {/* Gap Cards */}
-      <div className="space-y-4">
+      {/* Gap Cards with 3D Depth */}
+      <Scroll3DSection depth="medium">
+        <div className="space-y-4">
         {filteredGaps.length === 0 ? (
           <div className="p-12 text-center border border-dashed border-slate-800 rounded-2xl text-slate-500">
             No research gaps match criteria. Click "Discover New Gaps" above to generate new candidates!
@@ -328,7 +331,8 @@ export const ResearchGapFinder: React.FC = () => {
             );
           })
         )}
-      </div>
+        </div>
+      </Scroll3DSection>
     </div>
   );
 };

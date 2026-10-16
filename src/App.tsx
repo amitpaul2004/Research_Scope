@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
@@ -12,6 +13,7 @@ import { WritingImprover } from './components/WritingImprover';
 import { N8nAutomationCenter } from './components/N8nAutomationCenter';
 import { ExportModal } from './components/ExportModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
+import { ScrollContainerProvider } from './components/animations/ScrollContainerContext';
 import { api } from './api';
 import {
   User,
@@ -42,6 +44,7 @@ export default function App() {
   const [writingStudioInitialText, setWritingStudioInitialText] = useState('');
   const [exportTarget, setExportTarget] = useState<{ type: 'paper' | 'session'; id: string } | null>(null);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
   // Initial load
   useEffect(() => {
@@ -147,68 +150,85 @@ export default function App() {
           setGlobalSearch={setGlobalSearch}
         />
 
-        {/* Scrollable View Content */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              analytics={analytics}
-              papers={papers}
-              sessions={sessions}
-              gaps={gaps}
-              logs={logs}
-              onNavigate={setCurrentView}
-              onSelectPaper={(p) => {
-                setActivePaperForDetector(p);
-                setCurrentView('papers');
-              }}
-            />
-          )}
+        {/* Scrollable View Content with 3D Scroll Context */}
+        <ScrollContainerProvider containerRef={mainScrollRef}>
+          <main
+            ref={mainScrollRef}
+            className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 perspective-1200"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentView}
+                initial={{ opacity: 0, y: 14, rotateX: 3, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -14, rotateX: -3, scale: 0.99 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                style={{ transformStyle: 'preserve-3d' }}
+                className="w-full"
+              >
+                {currentView === 'dashboard' && (
+                  <DashboardView
+                    analytics={analytics}
+                    papers={papers}
+                    sessions={sessions}
+                    gaps={gaps}
+                    logs={logs}
+                    onNavigate={setCurrentView}
+                    onSelectPaper={(p) => {
+                      setActivePaperForDetector(p);
+                      setCurrentView('papers');
+                    }}
+                  />
+                )}
 
-          {currentView === 'context' && (
-            <ContextExplorer
-              onExport={handleExport}
-              onNavigateToGaps={() => setCurrentView('gaps')}
-            />
-          )}
+                {currentView === 'context' && (
+                  <ContextExplorer
+                    onExport={handleExport}
+                    onNavigateToGaps={() => setCurrentView('gaps')}
+                  />
+                )}
 
-          {currentView === 'papers' && (
-            <PaperStudio
-              papers={papers}
-              onRefreshPapers={handleRefreshPapers}
-              onOpenAiLikelihood={handleOpenAiLikelihood}
-              onOpenWritingImprover={handleOpenWritingStudioWithText}
-              onExport={handleExport}
-            />
-          )}
+                {currentView === 'papers' && (
+                  <PaperStudio
+                    papers={papers}
+                    onRefreshPapers={handleRefreshPapers}
+                    onOpenAiLikelihood={handleOpenAiLikelihood}
+                    onOpenWritingImprover={handleOpenWritingStudioWithText}
+                    onExport={handleExport}
+                  />
+                )}
 
-          {currentView === 'detector' && (
-            <AiLikelihoodPanel
-              paper={activePaperForDetector || papers[0] || null}
-              onSendToWritingStudio={handleOpenWritingStudioWithText}
-              onRefreshPaper={handleRefreshPapers}
-            />
-          )}
+                {currentView === 'detector' && (
+                  <AiLikelihoodPanel
+                    paper={activePaperForDetector || papers[0] || null}
+                    onSendToWritingStudio={handleOpenWritingStudioWithText}
+                    onRefreshPaper={handleRefreshPapers}
+                  />
+                )}
 
-          {currentView === 'compare' && (
-            <PaperComparisonView papers={papers} />
-          )}
+                {currentView === 'compare' && (
+                  <PaperComparisonView papers={papers} />
+                )}
 
-          {currentView === 'gaps' && (
-            <ResearchGapFinder />
-          )}
+                {currentView === 'gaps' && (
+                  <ResearchGapFinder />
+                )}
 
-          {currentView === 'discovery' && (
-            <AcademicDiscovery />
-          )}
+                {currentView === 'discovery' && (
+                  <AcademicDiscovery />
+                )}
 
-          {currentView === 'writing' && (
-            <WritingImprover initialText={writingStudioInitialText} />
-          )}
+                {currentView === 'writing' && (
+                  <WritingImprover initialText={writingStudioInitialText} />
+                )}
 
-          {currentView === 'automation' && (
-            <N8nAutomationCenter />
-          )}
-        </main>
+                {currentView === 'automation' && (
+                  <N8nAutomationCenter />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </ScrollContainerProvider>
       </div>
 
       {/* Export Modal */}
