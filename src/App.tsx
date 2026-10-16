@@ -83,7 +83,10 @@ export default function App() {
     try {
       const res = await api.getPapers();
       setPapers(res.papers);
-      if (res.papers.length > 0 && !activePaperForDetector) {
+      if (activePaperForDetector) {
+        const fresh = res.papers.find(p => p.id === activePaperForDetector.id);
+        if (fresh) setActivePaperForDetector(fresh);
+      } else if (res.papers.length > 0) {
         setActivePaperForDetector(res.papers[0]);
       }
     } catch (e) {
@@ -203,6 +206,7 @@ export default function App() {
                     paper={activePaperForDetector || papers[0] || null}
                     onSendToWritingStudio={handleOpenWritingStudioWithText}
                     onRefreshPaper={handleRefreshPapers}
+                    onOpenExportModal={(id) => handleExport('paper', id)}
                   />
                 )}
 

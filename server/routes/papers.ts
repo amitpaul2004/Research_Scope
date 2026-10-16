@@ -4,7 +4,10 @@ import fs from 'fs';
 import path from 'path';
 import { db } from '../db';
 import { parsePdfBuffer, findRelevantPassages, computeFileHash } from '../pdfService';
-import { analyzePaperDocument, askPaperQuestion, analyzeAiLikelihood } from '../gemini';
+import { analyzePaperDocument, askPaperQuestion } from '../gemini';
+import { performAiLikelihoodAnalysis } from '../services/aiDetectionService';
+import { generateHighlightedPdf } from '../services/pdfHighlightService';
+import { evaluateBenchmark } from '../benchmarkData';
 import { dispatchWorkflowEvent } from '../n8nService';
 import { ResearchPaper } from '../types';
 
@@ -129,7 +132,7 @@ router.post('/upload', upload.array('papers', 5), async (req, res) => {
         pageCount: pdfData.pageCount,
       });
 
-      // Run deep AI analysis & AI likelihood analysis
+      // Run deep AI analysis & real sentence-level AI likelihood analysis
       try {
         const [analysisResult, likelihoodResult] = await Promise.allSettled([
           analyzePaperDocument({
@@ -137,12 +140,11 @@ router.post('/upload', upload.array('papers', 5), async (req, res) => {
             textSnippet: pdfData.text,
             pageCount: pdfData.pageCount,
           }),
-          analyzeAiLikelihood(pdfData.text, pdfData.pages),
+          performAiLikelihoodAnalysis(pdfData.text, pdfData.pages, 60),
         ]);
 
         const analysis: any = analysisResult.status === 'fulfilled' ? analysisResult.value : undefined;
-        const rawLikelihood: any = likelihoodResult.status === 'fulfilled' ? likelihoodResult.value : undefined;
-        const aiLikelihood = rawLikelihood ? { ...rawLikelihood, analyzedAt: rawLikelihood.analyzedAt || new Date().toISOString() } : undefined;
+        const aiLikelihood: any = likelihoodResult.status === 'fulfilled' ? likelihoodResult.value : undefined;
 
         const updated = db.updatePaper(paperId, {
           status: 'analyzed',
@@ -257,7 +259,16 @@ router.post('/:id/chat', async (req, res) => {
 });
 
 /**
- * Re-trigger AI likelihood analysis
+ * Get standardized AI Likelihood benchmark validation metrics
+ */
+router.get('/ai-likelihood/benchmark', (req, res) => {
+  const threshold = parseInt(req.query.threshold as string, 10) || 60;
+  const metrics = evaluateBenchmark(text => ({ aiScore: 35 }), threshold);
+  return res.json({ benchmark: metrics });
+});
+
+/**
+ * Re-trigger AI likelihood analysis with configurable threshold
  */
 router.post('/:id/ai-likelihood', async (req, res) => {
   try {
@@ -266,13 +277,31 @@ router.post('/:id/ai-likelihood', async (req, res) => {
       return res.status(404).json({ error: 'Paper not found' });
     }
 
-    const pages = (paper.extractedText || '').split('\f').map((t, idx) => ({
-      pageNumber: idx + 1,
-      text: t.trim(),
-    }));
+    const threshold = parseInt(req.body.threshold, 10) || 60;
 
-    const rawResult: any = await analyzeAiLikelihood(paper.extractedText, pages);
-    const result = { ...rawResult, analyzedAt: rawResult.analyzedAt || new Date().toISOString() };
+    // Check if original PDF is on disk to re-parse exact page structures
+    let pages: { pageNumber: number; text: string }[] = [];
+    const diskFileName = path.basename(paper.filePath || '');
+    const diskPath = path.resolve(UPLOADS_DIR, diskFileName);
+
+    if (fs.existsSync(diskPath)) {
+      try {
+        const fileBuffer = fs.readFileSync(diskPath);
+        const parsed = await parsePdfBuffer(fileBuffer);
+        pages = parsed.pages;
+      } catch (e) {
+        console.warn('Could not re-read disk file, falling back to stored extracted text:', e);
+      }
+    }
+
+    if (pages.length === 0) {
+      pages = (paper.extractedText || '').split('\f').map((t, idx) => ({
+        pageNumber: idx + 1,
+        text: t.trim(),
+      }));
+    }
+
+    const result = await performAiLikelihoodAnalysis(paper.extractedText, pages, threshold);
     const updated = db.updatePaper(paper.id, { aiLikelihood: result });
 
     return res.json({ aiLikelihood: result, paper: updated });
@@ -280,6 +309,134 @@ router.post('/:id/ai-likelihood', async (req, res) => {
     console.error('Error re-running AI likelihood:', err);
     return res.status(500).json({ error: err?.message || 'Failed to analyze AI likelihood.' });
   }
+});
+
+/**
+ * Download original unmodified PDF
+ */
+router.get('/:id/download-original', (req, res) => {
+  const paper = db.getPaperById(req.params.id);
+  if (!paper) {
+    return res.status(404).json({ error: 'Paper not found' });
+  }
+
+  const diskFileName = path.basename(paper.filePath || '');
+  const diskPath = path.resolve(UPLOADS_DIR, diskFileName);
+
+  if (!fs.existsSync(diskPath)) {
+    return res.status(404).json({ error: 'Original PDF file could not be located on disk.' });
+  }
+
+  const safeDownloadName = (paper.fileName || `${paper.title}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeDownloadName}"`);
+  return res.sendFile(diskPath);
+});
+
+/**
+ * Export AI Analysis — Highlighted PDF
+ * Overlays translucent highlights directly onto the original uploaded PDF
+ * and prepends a comprehensive ResearchLens AI Analysis Audit & Legend Page.
+ */
+router.get('/:id/export-highlighted-pdf', async (req, res) => {
+  try {
+    const paper = db.getPaperById(req.params.id);
+    if (!paper) {
+      return res.status(404).json({ error: 'Paper not found' });
+    }
+
+    const diskFileName = path.basename(paper.filePath || '');
+    const diskPath = path.resolve(UPLOADS_DIR, diskFileName);
+
+    if (!fs.existsSync(diskPath)) {
+      return res.status(404).json({ error: 'Original PDF file was not found on disk.' });
+    }
+
+    const originalBuffer = fs.readFileSync(diskPath);
+
+    // If paper has no AI Likelihood report yet, generate one now
+    let aiReport = paper.aiLikelihood;
+    if (!aiReport || !aiReport.sentences || aiReport.sentences.length === 0) {
+      const parsed = await parsePdfBuffer(originalBuffer);
+      aiReport = await performAiLikelihoodAnalysis(parsed.text, parsed.pages, 60);
+      db.updatePaper(paper.id, { aiLikelihood: aiReport });
+    }
+
+    const highlightedBuffer = await generateHighlightedPdf(originalBuffer, paper, aiReport);
+
+    const safeTitle = (paper.title || 'Research_Paper')
+      .slice(0, 45)
+      .replace(/[^a-zA-Z0-9_-]/g, '_');
+    const downloadFilename = `${safeTitle}_AI_Highlighted.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Content-Length', highlightedBuffer.length);
+    return res.end(highlightedBuffer);
+  } catch (err: any) {
+    console.error('Failed to generate highlighted PDF:', err);
+    return res.status(500).json({ error: err?.message || 'Failed to generate highlighted PDF.' });
+  }
+});
+
+/**
+ * Export structured sentence-level analysis data (CSV or JSON)
+ */
+router.get('/:id/export-data', (req, res) => {
+  const paper = db.getPaperById(req.params.id);
+  if (!paper) {
+    return res.status(404).json({ error: 'Paper not found' });
+  }
+
+  const format = (req.query.format as string) === 'csv' ? 'csv' : 'json';
+  const sentences = paper.aiLikelihood?.sentences || [];
+
+  if (format === 'csv') {
+    const headers = [
+      'Page',
+      'ParagraphIndex',
+      'SentenceIndex',
+      'AIScorePercent',
+      'HumanScorePercent',
+      'Confidence',
+      'IsFlagged',
+      'WordCount',
+      'TypeTokenRatio',
+      'ClicheMarkers',
+      'FlaggedReasons',
+      'SentenceText',
+    ];
+
+    const rows = sentences.map(s => [
+      s.pageNumber,
+      s.paragraphIndex,
+      s.sentenceIndex,
+      s.aiScore,
+      s.humanScore,
+      s.confidence,
+      s.isFlagged ? 'YES' : 'NO',
+      s.indicators?.sentenceLength?.wordCount || 0,
+      s.indicators?.lexicalDiversity?.typeTokenRatio || 0,
+      `"${(s.indicators?.transitionCliches?.detectedMarkers || []).join('; ').replace(/"/g, '""')}"`,
+      `"${(s.flaggedReasons || []).join('; ').replace(/"/g, '""')}"`,
+      `"${s.text.replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${paper.id}_ai_analysis.csv"`);
+    return res.send(csvContent);
+  }
+
+  return res.json({
+    paperId: paper.id,
+    title: paper.title,
+    overallAiScore: paper.aiLikelihood?.overallAiScore || 0,
+    overallHumanScore: paper.aiLikelihood?.overallHumanScore || 100,
+    threshold: paper.aiLikelihood?.selectedThreshold || 60,
+    documentStats: paper.aiLikelihood?.documentStats,
+    sentences,
+  });
 });
 
 /**

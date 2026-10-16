@@ -96,9 +96,17 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
   }),
-  reanalyzeAiLikelihood: (id: string) => fetchJson<{ aiLikelihood: any; paper: ResearchPaper }>(`${BASE_URL}/papers/${id}/ai-likelihood`, {
-    method: 'POST',
-  }),
+  reanalyzeAiLikelihood: (id: string, threshold: number = 60) =>
+    fetchJson<{ aiLikelihood: any; paper: ResearchPaper }>(`${BASE_URL}/papers/${id}/ai-likelihood`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threshold }),
+    }),
+  getAiLikelihoodBenchmark: (threshold: number = 60) =>
+    fetchJson<{ benchmark: any }>(`${BASE_URL}/papers/ai-likelihood/benchmark?threshold=${threshold}`),
+  getOriginalPdfUrl: (id: string) => `${BASE_URL}/papers/${id}/download-original`,
+  getHighlightedPdfUrl: (id: string) => `${BASE_URL}/papers/${id}/export-highlighted-pdf`,
+  getDataExportUrl: (id: string, format: 'csv' | 'json' = 'csv') => `${BASE_URL}/papers/${id}/export-data?format=${format}`,
 
   // Multi-Paper Comparison
   runComparison: (paperIds: string[]) => fetchJson<{ comparison: PaperComparison }>(`${BASE_URL}/research/compare/run`, {
@@ -198,7 +206,11 @@ export const api = {
   getRevisions: () => fetchJson<{ revisions: WritingRevision[] }>(`${BASE_URL}/writing/revisions`),
 
   // Exports
-  generateExport: (type: 'paper' | 'session', id: string, format: 'markdown' | 'bibtex' = 'markdown') =>
+  generateExport: (
+    type: 'paper' | 'session',
+    id: string,
+    format: 'markdown' | 'bibtex' | 'annotated_report' | 'csv' | 'json' = 'markdown'
+  ) =>
     fetchJson<{ format: string; content: string; filename: string }>(`${BASE_URL}/exports`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -30,25 +30,120 @@ export interface ResearchPaper {
   aiLikelihood?: AiLikelihoodReport;
 }
 
+export interface LinguisticIndicators {
+  sentenceLength: {
+    wordCount: number;
+    charCount: number;
+    varianceDeviation: number;
+  };
+  lexicalDiversity: {
+    typeTokenRatio: number; // 0 - 1
+    uniqueWords: number;
+    totalWords: number;
+  };
+  repetitivePatterns: {
+    repeatedNgrams: string[];
+    repetitionScore: number; // 0 - 100
+  };
+  transitionCliches: {
+    detectedMarkers: string[];
+    frequencyScore: number; // 0 - 100
+  };
+  syntacticUniformity: {
+    burstinessScore: number; // low = uniform/machine-like
+    uniformityIndex: number; // 0 - 100
+  };
+}
+
+export interface PaperSentenceAnalysis {
+  id: string;
+  pageNumber: number;
+  paragraphIndex: number;
+  sentenceIndex: number;
+  text: string;
+  aiScore: number; // 0 - 100
+  humanScore: number; // 0 - 100
+  confidence: 'High' | 'Medium' | 'Low';
+  flaggedReasons: string[];
+  indicators: LinguisticIndicators;
+  isFlagged: boolean;
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export interface PaperPassage {
   id: string;
   pageNumber: number;
+  paragraphIndex?: number;
+  sentenceIndex?: number;
   text: string;
-  aiScore: number;
+  aiScore: number; // 0-100
   humanScore: number;
   confidence: 'High' | 'Medium' | 'Low';
   flaggedReasons: string[];
+  indicators?: LinguisticIndicators;
+  coordinates?: { top: number; left: number; width: number; height: number };
+}
+
+export interface ValidationMetrics {
+  sampleCount: number;
+  precision: number;
+  recall: number;
+  f1Score: number;
+  falsePositiveRate: number;
+  falseNegativeRate: number;
+  confusionMatrix: {
+    truePositive: number;
+    falsePositive: number;
+    trueNegative: number;
+    falseNegative: number;
+  };
+  benchmarkDataset: string;
+  evaluationDate: string;
+  thresholdUsed: number;
+  disciplineBreakdown: { discipline: string; sampleCount: number; f1Score: number; fpr: number }[];
+  modelGeneratorsTested: string[];
+  isExperimental: boolean;
+  accuracyNote: string;
+}
+
+export interface DocumentStylometricStats {
+  totalWords: number;
+  totalSentences: number;
+  totalParagraphs: number;
+  flaggedSentencesCount: number;
+  flaggedParagraphsCount: number;
+  meanSentenceLength: number;
+  sentenceLengthStdDev: number;
+  typeTokenRatio: number;
+  clicheDensityPerThousandWords: number;
+  overallBurstiness: number;
 }
 
 export interface AiLikelihoodReport {
-  overallAiScore: number;
-  overallHumanScore: number;
+  overallAiScore: number; // 0 - 100
+  overallHumanScore: number; // 0 - 100
   confidence: 'High' | 'Medium' | 'Low';
   methodologyExplanation: string;
   isExperimentalHeuristic: boolean;
-  passages: PaperPassage[];
-  pageStats: { page: number; averageAiScore: number; passageCount: number }[];
+  selectedThreshold: number;
   analyzedAt: string;
+  documentStats: DocumentStylometricStats;
+  passages: PaperPassage[];
+  sentences: PaperSentenceAnalysis[];
+  pageStats: {
+    page: number;
+    averageAiScore: number;
+    sentenceCount: number;
+    flaggedCount: number;
+  }[];
+  validationEvaluation?: ValidationMetrics;
+  ocrNotice?: string;
+  isScannedPdf?: boolean;
 }
 
 export interface PaperAnalysis {
